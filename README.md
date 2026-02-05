@@ -18,6 +18,8 @@
 - **MITRE ATT&CK Enrichment**: Semantic mapping of behaviors to techniques via internal Knowledge Base.
 - **Wazuh SIEM Historian**: Correlation with historical internal logs and alerts.
 - **Interactive SOC Dashboard**: Real-time visualization of threats, trends, and automated analysis results.
+- **Interactive Kill Chain Filtering**: Filter alerts dynamically by clicking on Attack Phases.
+- **Dynamic CVE Radar Chart**: Real-time correlation of SIEM alerts with Vulnerability metrics.
 - **Professional Reporting**: Automated generation of comprehensive PDF investigation reports.
 
 ---
@@ -193,5 +195,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 **Author**: PRAVEENKUMAR
 **Project**: [SecureZen GitHub](https://github.com/pr4vndevhubX/SecureZen)
 
-**Last Updated**: 2026-02-05
+**Last Updated**: 2026-02-06
 **Version**: 1.2.0

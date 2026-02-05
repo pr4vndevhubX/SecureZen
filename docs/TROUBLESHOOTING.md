@@ -42,5 +42,18 @@ Common issues and remediation steps for the SecureZen platform.
 
 ---
 
+## Dashboard Visualization Issues
+
+### CVE Radar Chart is Flat (Empty)
+- **Cause**: No alerts in the database match the specific CVE keywords (e.g., "dark web", "ssl").
+- **Fix**: Check your `alerts` table. The chart relies on matching `rule_description` against specific keywords defined in `utils/database.py`. You can inject test alerts to verify functionality.
+
+### Kill Chain Filter Mismatch
+- **Issue**: Clicking a phase (e.g., "Reconnaissance") shows no events in the list.
+- **Cause**: The alert's `killChainPhase` property might not match the chart's category.
+- **Fix**: Ensure `App.jsx` and `MitreEvents.jsx` are synchronized. The `getKillChainPhase` function in App.jsx determines the tag, and the Event component filters by it.
+
+---
+
 **Author**: PRAVEENKUMAR
-**Last Updated**: 2026-02-05
+**Last Updated**: 2026-02-06

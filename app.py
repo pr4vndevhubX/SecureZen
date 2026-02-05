@@ -351,8 +351,19 @@ async def get_dashboard_stats():
         # Merge Real + Mock
         combined_alerts = alerts + mock_alerts
         
+        # To prevent one severity (like Medium) from burying others in the top 500,
+        # we sample them more intelligently
+        
+        crit_alerts = [a for a in combined_alerts if a.get('severity') == 'Critical']
+        high_alerts = [a for a in combined_alerts if a.get('severity') == 'High']
+        med_alerts = [a for a in combined_alerts if a.get('severity') == 'Medium']
+        low_alerts = [a for a in combined_alerts if a.get('severity') == 'Low']
+        
+        # Take up to 200 of each Critical/High, then fill with Medium/Low
+        balanced_alerts = crit_alerts[:200] + high_alerts[:200] + med_alerts[:300] + low_alerts[:100]
+        
         # Sort by time
-        combined_alerts.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
+        balanced_alerts.sort(key=lambda x: x.get('timestamp', ''), reverse=True)
         
         # Recalculate stats for consistency
         hybrid_severity_counts = {
@@ -363,7 +374,7 @@ async def get_dashboard_stats():
         }
         
         stats['severity_counts'] = hybrid_severity_counts
-        stats['total_alerts'] = len(combined_alerts)
+        stats['total_alerts'] = sum(hybrid_severity_counts.values())
 
         # Get alert trends for the chart
         alert_trends = db.get_alert_trends(hours=168)  # Last 7 days
@@ -374,7 +385,7 @@ async def get_dashboard_stats():
             "radar_stats": radar_stats,
             "cve_summary": cve_summary,
             "top_mitre_enriched": enriched_mitre,
-            "alerts": combined_alerts[:500], # Return more alerts to cover the counts
+            "alerts": balanced_alerts[:800], # Return a healthy batch
             "crew_analysis": db.get_recent_analyses(),
             "alert_trends": alert_trends
         }
