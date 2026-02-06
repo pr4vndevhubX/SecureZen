@@ -46,7 +46,7 @@ const EventRow = ({ alert, index, onAnalyze, getSeverityColor }) => {
             <td className="py-4 px-4">
                 <div className="flex flex-col gap-1">
                     <span className={`px-2 py-0.5 rounded-[4px] text-[8px] font-bold uppercase border leading-none w-fit ${getSeverityColor(currentSeverity)}`}>
-                        {currentSeverity === 'High' ? 'Major' : currentSeverity === 'Low' ? 'Minor' : currentSeverity}
+                        {currentSeverity === 'High' ? 'Major' : currentSeverity === 'Medium' || currentSeverity === 'Low' ? 'Minor' : currentSeverity}
                     </span>
                     {aiSeverity && (
                         <span className="text-[7px] text-[#00d4ff] font-bold uppercase tracking-tighter flex items-center gap-0.5">
@@ -128,25 +128,46 @@ const EventRow = ({ alert, index, onAnalyze, getSeverityColor }) => {
     );
 };
 
-export const MitreEvents = ({ alerts, onAnalyze, initialSeverity = 'All' }) => {
-    const [searchTerm, setSearchTerm] = useState('');
+export const MitreEvents = ({ alerts, onAnalyze, initialSeverity = 'All', initialSearch = '', onSearchChange }) => {
+    const [searchTerm, setSearchTerm] = useState(initialSearch);
     const [severityFilter, setSeverityFilter] = useState(initialSeverity);
 
-    
+    useEffect(() => {
+        if (initialSearch !== undefined) {
+            setSearchTerm(initialSearch);
+        }
+    }, [initialSearch]);
 
     useEffect(() => {
-        if (initialSeverity !== 'All' && initialSeverity) {
+        if (initialSeverity) {
             setSeverityFilter(initialSeverity);
         }
     }, [initialSeverity]);
+
+    const handleSearchChange = (e) => {
+        const val = e.target.value;
+        setSearchTerm(val);
+        if (onSearchChange) {
+            onSearchChange(val);
+        }
+    };
 
     const filteredAlerts = (alerts || []).filter(alert => {
         const matchesSearch =
             (alert.entity || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
             (alert.type || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-            (alert.message || '').toLowerCase().includes(searchTerm.toLowerCase());
+            (alert.message || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (alert.mitreTactic || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+            (alert.killChainPhase || '').toLowerCase().includes(searchTerm.toLowerCase());
 
-        const matchesSeverity = severityFilter === 'All' || alert.severity === severityFilter;
+        let matchesSeverity = true;
+        if (severityFilter === 'Critical') {
+            matchesSeverity = alert.severity === 'Critical';
+        } else if (severityFilter === 'Major') {
+            matchesSeverity = alert.severity === 'High' || alert.severity === 'Major';
+        } else if (severityFilter === 'Minor') {
+            matchesSeverity = alert.severity === 'Medium' || alert.severity === 'Low' || alert.severity === 'Minor';
+        }
 
         return matchesSearch && matchesSeverity;
     });
@@ -154,23 +175,20 @@ export const MitreEvents = ({ alerts, onAnalyze, initialSeverity = 'All' }) => {
     // Chart Data based on Severity (Image 3 Style)
     const severityCounts = {
         'Critical': 0,
-        'High': 0,
-        'Medium': 0,
-        'Low': 0
+        'Major': 0,
+        'Minor': 0
     };
     filteredAlerts.forEach(a => {
-        const sev = a.severity || 'Medium';
-        if (severityCounts[sev] !== undefined) severityCounts[sev]++;
-        else if (sev === 'Major') severityCounts['High']++;
-        else if (sev === 'Minor') severityCounts['Low']++;
-        else severityCounts['Low']++;
+        const sev = a.severity;
+        if (sev === 'Critical') severityCounts['Critical']++;
+        else if (sev === 'High' || sev === 'Major') severityCounts['Major']++;
+        else severityCounts['Minor']++;
     });
 
     const chartData = [
         { name: 'Critical', count: severityCounts['Critical'], fill: '#ef4444' },
-        { name: 'High', count: severityCounts['High'], fill: '#f97316' },
-        { name: 'Medium', count: severityCounts['Medium'], fill: '#eab308' },
-        { name: 'Low', count: severityCounts['Low'], fill: '#3b82f6' },
+        { name: 'Major', count: severityCounts['Major'], fill: '#f97316' },
+        { name: 'Minor', count: severityCounts['Minor'], fill: '#eab308' },
     ];
 
     const getSeverityColor = (sev) => {
@@ -178,7 +196,7 @@ export const MitreEvents = ({ alerts, onAnalyze, initialSeverity = 'All' }) => {
             case 'critical': return 'bg-red-500/20 text-red-500 border-red-500/40';
             case 'high':
             case 'major': return 'bg-orange-500/20 text-orange-500 border-orange-500/40';
-            case 'medium': return 'bg-yellow-500/20 text-yellow-500 border-yellow-500/40';
+            case 'medium':
             case 'low':
             case 'minor': return 'bg-blue-500/20 text-blue-500 border-blue-500/40';
             default: return 'bg-blue-500/10 text-gray-400 border-gray-500/20';
@@ -226,7 +244,7 @@ export const MitreEvents = ({ alerts, onAnalyze, initialSeverity = 'All' }) => {
                         type="text"
                         placeholder="Search..."
                         value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
+                        onChange={handleSearchChange}
                         className="w-full bg-[#0a0e27]/60 border border-[#2d3748] rounded-lg pl-9 pr-4 py-1.5 text-xs text-white focus:outline-none focus:border-[#00d4ff] transition-all"
                     />
                 </div>
@@ -235,7 +253,7 @@ export const MitreEvents = ({ alerts, onAnalyze, initialSeverity = 'All' }) => {
                     onChange={(e) => setSeverityFilter(e.target.value)}
                     className="bg-[#0a0e27]/60 border border-[#2d3748] rounded-lg px-3 py-1.5 text-xs text-white focus:outline-none font-bold uppercase tracking-wider"
                 >
-                    {['All', 'Critical', 'High', 'Medium', 'Low'].map(s => (
+                    {['All', 'Critical', 'Major', 'Minor'].map(s => (
                         <option key={s} value={s}>{s} Severity</option>
                     ))}
                 </select>

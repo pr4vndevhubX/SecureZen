@@ -9,3 +9,28 @@
         font-family: 'Outfit', sans-serif;
     }
 }
+
+@layer utilities {
+    .no-scrollbar::-webkit-scrollbar {
+        display: none;
+    }
+    .no-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+    }
+
+    /* Custom scrollbar for main content if needed */
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #060914;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #1a1f3a;
+        border-radius: 10px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #00d4ff;
+    }
+}

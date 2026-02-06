@@ -166,40 +166,72 @@ class ThreatDatabase:
         return formatted_results
 
     def get_radar_stats(self):
-        """Map wazuh alerts to Krya-specific categories for the Radar chart"""
+        """
+        Map Wazuh alerts to Krya-specific categories for the Radar chart.
+        Implements a hybrid model: Real Data + Mock Baseline.
+        """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         categories = {
-            'Dark Web Scan': ['dark web', 'leaked', 'credential'],
-            'CVE Based Vulnerability': ['cve-', 'vulnerability', 'exploit'],
-            'App Misconfig': ['configuration', 'policy', 'cis_', 'misconfig'],
-            'SSL Misconfig': ['ssl', 'tls', 'certificate', 'https'],
-            'Malicious Assets': ['malware', 'virus', 'trojan', 'backdoor', 'shell'],
-            'Internal Posture': ['authentication', 'login', 'access control', 'privilege'],
-            'DNS Masquerade': ['dns', 'flood', 'spoof', 'nxdomain']
+            'Dark Web Scan': {
+                'keywords': ['dark web', 'leaked', 'credential', 'tor exit'], 
+                'mock_base': 15, 'threshold': 100
+            },
+            'CVE Based Vulnerability': {
+                'keywords': ['cve-', 'vulnerability', 'exploit', 'patch', 'outdated'], 
+                'mock_base': 45, 'threshold': 120
+            },
+            'App Misconfig': {
+                'keywords': ['configuration', 'policy', 'cis_', 'misconfig', 'default', 'weak'], 
+                'mock_base': 35, 'threshold': 100
+            },
+            'SSL Misconfig': {
+                'keywords': ['ssl', 'tls', 'certificate', 'https', 'expired', 'self-signed'], 
+                'mock_base': 10, 'threshold': 80
+            },
+            'Malicious Assets': {
+                'keywords': ['malware', 'virus', 'trojan', 'backdoor', 'shell', 'ransom'], 
+                'mock_base': 30, 'threshold': 100
+            },
+            'Internal Posture': {
+                'keywords': ['authentication', 'login', 'access control', 'privilege', 'sudo'], 
+                'mock_base': 60, 'threshold': 150
+            },
+            'DNS Masquerade': {
+                'keywords': ['dns', 'flood', 'spoof', 'nxdomain', 'tunnel'], 
+                'mock_base': 5, 'threshold': 60
+            }
         }
         
         radar_data = []
         max_score = 200
         
-        for name, keywords in categories.items():
-            # Build query for keywords
+        for name, config in categories.items():
+            # 1. Get Real Count from DB
+            keywords = config['keywords']
             query = "SELECT COUNT(*) FROM alerts WHERE " + " OR ".join([f"rule_description LIKE '%{k}%'" for k in keywords])
             cursor.execute(query)
-            count = cursor.fetchone()[0]
+            real_count = cursor.fetchone()[0]
             
-            # Map count to a realistic Obtained Score (A)
-            # We add a small base random drift for metrics that might be 0 to keep it "alive" as requested
-            import random
-            base_drift = random.randint(5, 15)
-            obtained = min(count * 5 + base_drift, 190) # Cap at 190 so Max (200) is always higher
+            # 2. Hybrid Calculation
+            # Total = Real + Mock Base
+            total_count = real_count + config['mock_base']
+            
+            # 3. Calculate Score (Scaling)
+            # Formula: (Total / Threshold) * Max_Score
+            # We cap it at Max_Score * 0.95 (190) to leave a small gap unless it's overflowing
+            score_ratio = min(total_count / config['threshold'], 0.95)
+            obtained = int(score_ratio * max_score)
             
             radar_data.append({
                 "subject": name,
                 "A": obtained,
                 "B": max_score,
-                "fullMark": max_score
+                "fullMark": max_score,
+                # Add metadata for tooltip debugging if needed
+                "realCount": real_count,
+                "mockBase": config['mock_base']
             })
             
         conn.close()

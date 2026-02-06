@@ -190,28 +190,86 @@ export const TrendChart = ({ data = STABLE_EVOLUTION }) => {
     );
 };
 
-export const KillChainChart = ({ data = MOCK_KILL_CHAIN }) => {
+export const KillChainChart = ({ data, onPhaseClick }) => {
     const [selected, setSelected] = useState(null);
+
+    // Sort data to follow the kill chain order
+    const phasesOrder = [
+        'Reconnaissance', 'Weaponization', 'Delivery', 'Exploitation',
+        'Installation', 'Command & Control', 'Actions on Objectives'
+    ];
+
+    const sortedData = [...(data || [])].sort((a, b) =>
+        phasesOrder.indexOf(a.name) - phasesOrder.indexOf(b.name)
+    );
+
+    const handleBarClick = (payload) => {
+        if (payload) {
+            setSelected(payload);
+            if (onPhaseClick) {
+                onPhaseClick(payload.name);
+            }
+        }
+    };
+
     return (
-        <div className="bg-[#0a0e27] p-8 rounded-3xl border border-[#1a1f3a] shadow-2xl relative">
+        <div className="bg-[#0a0e27] p-8 rounded-3xl border border-[#1a1f3a] shadow-2xl relative h-full">
             <h3 className="text-xs font-bold text-white uppercase tracking-[0.4em] mb-8 flex items-center gap-2 border-b border-[#1a1f3a] pb-4">
                 <Target className="w-5 h-5 text-blue-500" /> Kill Chain Phase Distribution
             </h3>
             <div className="h-[280px]">
                 <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={data} layout="vertical" onClick={(d) => d && setSelected(d.activePayload[0].payload)}>
+                    <BarChart
+                        data={sortedData}
+                        layout="vertical"
+                        onClick={(d) => d && d.activePayload && handleBarClick(d.activePayload[0].payload)}
+                    >
                         <XAxis type="number" hide />
-                        <YAxis dataKey="name" type="category" stroke="#4a5568" width={140} axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: '800' }} />
+                        <YAxis
+                            dataKey="name"
+                            type="category"
+                            stroke="#4a5568"
+                            width={140}
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fontSize: 10, fontWeight: '800', fill: '#94a3b8' }}
+                        />
                         <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={18} className="cursor-pointer">
-                            {data.map((e, i) => <Cell key={i} fill={COLORS.killChain[i % COLORS.killChain.length]} />)}
+                            {sortedData.map((e, i) => (
+                                <Cell key={i} fill={COLORS.killChain[i % COLORS.killChain.length]} />
+                            ))}
                         </Bar>
+                        <RechartsTooltip
+                            cursor={{ fill: 'rgba(255,255,255,0.05)' }}
+                            content={({ active, payload }) => {
+                                if (active && payload && payload.length) {
+                                    return (
+                                        <div className="bg-[#1a1f3a] border border-[#2d3748] p-3 rounded-lg shadow-2xl">
+                                            <p className="text-white font-bold text-xs uppercase tracking-wider">{payload[0].payload.name}</p>
+                                            <p className="text-[#00d4ff] text-xl font-bold mt-1">{payload[0].value}</p>
+                                            <p className="text-gray-400 text-[10px] mt-2 italic">Click to filter events</p>
+                                        </div>
+                                    );
+                                }
+                                return null;
+                            }}
+                        />
                     </BarChart>
                 </ResponsiveContainer>
             </div>
             <AnimatePresence>
                 {selected && (
-                    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl">
-                        <p className="text-sm text-gray-300">"{selected.detail}"</p>
+                    <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0 }}
+                        className="mt-4 p-4 bg-blue-500/10 border border-blue-500/20 rounded-xl"
+                    >
+                        <div className="flex items-center justify-between mb-1">
+                            <span className="text-[10px] font-bold text-blue-400 uppercase tracking-widest">Neural Summary • {selected.name}</span>
+                            <button onClick={() => setSelected(null)} className="text-gray-500 hover:text-white text-xs">×</button>
+                        </div>
+                        <p className="text-sm text-gray-300 leading-relaxed italic">"{selected.detail || 'Monitoring active indicators in this phase.'}"</p>
                     </motion.div>
                 )}
             </AnimatePresence>
