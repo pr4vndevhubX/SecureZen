@@ -17,6 +17,7 @@ from dotenv import load_dotenv
 from utils.database import ThreatDatabase
 from utils.wazuh_connector import WazuhConnector
 from utils.auth_db import UserDatabase
+from services.copilot_service import CopilotService
 
 # Import Crew
 # Assuming crew.py has a standard interface or I can invoke it
@@ -42,7 +43,9 @@ app.add_middleware(
 # Initialize DB
 db = ThreatDatabase()
 connector = WazuhConnector()
+connector = WazuhConnector()
 user_db = UserDatabase()
+copilot = CopilotService(db_connector=db)
 
 # JWT Configuration
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", "your-secret-key-change-in-production")
@@ -558,25 +561,29 @@ def mitre_local_search(query: str):
 
 @app.post("/api/chat")
 async def chat_interaction(request: ChatRequest):
-    """Simple RAG / Chat interface using the Crew or LLM"""
+    """Smart Copilot Chat Interface"""
     msg = request.message
     
-    # For now, a simple echo or routing to Crew if it looks like an IP
-    # In a real implementation, this would use `query_knowledge` or similar.
-    
+    # 1. Check for explicit IP investigation commands (Fast Path)
     import re
     ip_pattern = r'\b(?:\d{1,3}\.){3}\d{1,3}\b'
     match = re.search(ip_pattern, msg)
     
-    if match:
+    if match and ("investigate" in msg.lower() or "analyze" in msg.lower() or "scan" in msg.lower()):
         ip = match.group(0)
         return {
-            "response": f"I detected IP {ip}. Starting investigation...\n\n" + 
-                        str(crew_manager.run_crew(ip))
+            "type": "investigation_trigger",
+            "content": f"I've started a full Agentic investigation on **{ip}**.",
+            "data": {"ioc": ip} # Frontend can trigger the actual /analyze-ioc call or show a link
         }
+
+    # 2. Use Copilot Service for NLU
+    if copilot:
+        return copilot.process_message(msg)
     
     return {
-        "response": f"I received your message: '{msg}'. \n\nI am the AI SOC Assistant. I can investigate IPs. Try asking 'Analyze 192.168.1.1'."
+        "type": "text",
+        "content": "Copilot service is offline."
     }
 
 if __name__ == "__main__":

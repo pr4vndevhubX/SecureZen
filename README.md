@@ -13,10 +13,11 @@
 ### Key Capabilities
 
 - **Neural Agent Swarm**: 10 specialized AI agents working collaboratively to investigate threats.
+- **SecureZen Analyst**: Conversational SOC Copilot for natural language log searching, severity breakdowns, and forensic triage.
+- **Conversational Memory**: Supports multi-turn investigations by remembering session context (Powered by AURA).
 - **Deep Threat Intel Integration**: Native connectors for VirusTotal, AbuseIPDB, and Yeti.
 - **Autonomous Alert Triage**: Automated severity assessment and prioritization using neural logic.
-- **MITRE ATT&CK Enrichment**: Semantic mapping of behaviors to techniques via internal Knowledge Base.
-- **Wazuh SIEM Historian**: Correlation with historical internal logs and alerts.
+- **MITRE ATT&CK Enrichment**: Mapping behaviors to techniques via internal Knowledge Base.
 - **Interactive SOC Dashboard**: Real-time visualization of threats, trends, and automated analysis results.
 - **Interactive Kill Chain Filtering**: Filter alerts dynamically by clicking on Attack Phases.
 - **Dynamic CVE Radar Chart**: Real-time correlation of SIEM alerts with Vulnerability metrics.
@@ -192,8 +193,8 @@ Distributed under the MIT License. See `LICENSE` for more information.
 
 ## Contact
 
-**Author**: PRAVEENKUMAR
+**Author**: PRAVEENKUMAR / KRYA SOLUTIONS PRIVATE LIMITED
 **Project**: [SecureZen GitHub](https://github.com/pr4vndevhubX/SecureZen)
 
-**Last Updated**: 2026-02-06
-**Version**: 1.2.0
+**Last Updated**: 2026-02-09
+**Version**: 1.3.0

@@ -55,5 +55,28 @@ Common issues and remediation steps for the SecureZen platform.
 
 ---
 
-**Author**: PRAVEENKUMAR
-**Last Updated**: 2026-02-06
+## AI Copilot (SecureZen) Issues
+
+### Copilot Reports "0 Alerts" when Dashboard shows thousands
+- **Cause**: Time range mismatch. Dashboards often show historical data, while the Copilot defaults to a strictly recent window. If documentation suggests there are alerts but the bot says 0, the data is likely older than the bot's threshold.
+- **Fix**: Run `test/inject_critical_alerts.py` to seed the database with current-timestamp events. SecureZen is designed to prioritize real-time truth over historical bulk.
+
+### "I'm having trouble connecting to my AI brain"
+- **Cause**: This is usually a Logic Error in the `CopilotService`.
+- **Fix**: Check `services/copilot_service.py`. Ensure the `intent_prompt` is defined inside the `process_message` method. Verify that the LLM API (Groq/OpenAI) hasn't hit a rate limit.
+
+### Missing IP Extraction in Logs
+- **Issue**: Webhook receives alerts but logs say "No IPs extracted".
+- **Fix**: Check the `full_alert` structure from Wazuh. The regex inside `webhook.py` or `CopilotService` may need adjustment for your specific log format (e.g., JSON vs. Syslog).
+
+---
+
+## Build & Dependencies
+
+### Missing UI Components (e.g., Lucide Icons)
+- **Fix**: Run `npm install lucide-react` in the `frontend` directory. If using Vite, clear the cache with `rm -rf node_modules/.vite` and restart the dashboard.
+
+---
+
+**Author**: PRAVEENKUMAR / KRYA SOLUTIONS PRIVATE LIMITED
+**Last Updated**: 2026-02-09

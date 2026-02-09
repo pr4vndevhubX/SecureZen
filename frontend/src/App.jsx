@@ -16,6 +16,7 @@ import { TrendChart, KillChainChart, CveRadar, ThreatEntities, AttackPaths } fro
 import { MitreEvents } from './components/MitreEvents';
 import ThreatFunnel from './components/ThreatFunnel';
 import Login from './components/Login';
+import Copilot from './components/Copilot';
 import { API_BASE_URL } from './config';
 
 
@@ -701,6 +702,9 @@ const AISOCDashboard = () => {
                     </div>
                 </main>
             </div>
+
+            {/* AI Copilot Widget */}
+            <Copilot />
         </div>
     );
 };

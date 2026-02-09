@@ -104,6 +104,14 @@ Provides semantic search capabilities for security frameworks:
 - **Vector Storage**: Stores embeddings of the MITRE ATT&CK knowledge base.
 - **Semantic Retrieval**: Allows agents to find TTPs based on natural language descriptions of behavior.
 
+### SecureZen Analyst (Conversational NLU)
+**Technology**: LLM-driven Intent Classification + Conversational Memory
+
+A conversational interface that provides:
+- **Natural Language Querying**: Translates user requests into SQL constraints for the Wazuh database.
+- **Narrative Breakdowns**: Performs statistical analysis on alert clusters to provide human-readable summaries.
+- **Forensic Detection**: Specific `ANALYZE` engine for triage of critical suspicious behaviors.
+
 ---
 
 ## Data Flow
@@ -134,5 +142,5 @@ SecureZen uses a **Sequential Process** via CrewAI:
 
 ---
 
-**Author**: PRAVEENKUMAR
-**Last Updated**: 2026-02-05
+**Author**: PRAVEENKUMAR / KRYA SOLUTIONS PRIVATE LIMITED
+**Last Updated**: 2026-02-09

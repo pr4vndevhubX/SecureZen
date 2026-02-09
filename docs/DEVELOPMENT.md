@@ -11,14 +11,11 @@ Guide for developers and security engineers contributing to the SecureZen platfo
 SecureZen/
 ├── app.py                 # Main FastAPI Backend & Dashboard API
 ├── crew.py                # CrewAI Agent Orchestration & Logic
-├── main.py                # CLI Entry Point for investigations
-├── config/                # Agent & Task YAML configurations
-│   ├── agents.yaml
-│   └── tasks.yaml
 ├── services/
-│   └── rag-service/       # MITRE ATT&CK Vector Search Service
+│   ├── rag-service/       # MITRE ATT&CK Vector Search Service
+│   └── copilot_service.py # NLU & Conversational SOC Analysis
 ├── tools/                 # Custom CrewAI Tools (VT, AbuseIPDB, Wazuh, etc.)
-├── utils/                 # Shared utilities (DB, Auth, Connectors)
+├── test/                  # Utility and data injection scripts (NEW)
 ├── frontend/              # SOC Dashboard UI (Vite/React)
 └── data/                  # Persistent storage (SQLite DBs)
 ```
@@ -81,5 +78,5 @@ Use the FastAPI Docs (Swagger UI) available at:
 
 ---
 
-**Author**: PRAVEENKUMAR
-**Last Updated**: 2026-02-05
+**Author**: PRAVEENKUMAR / KRYA SOLUTIONS PRIVATE LIMITED
+**Last Updated**: 2026-02-09
