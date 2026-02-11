@@ -13,9 +13,14 @@ SecureZen/
 ├── crew.py                # CrewAI Agent Orchestration & Logic
 ├── services/
 │   ├── rag-service/       # MITRE ATT&CK Vector Search Service
+│   ├── syslog_listener.py     # UDP Syslog Ingestion (New)
+│   ├── syslog_preprocessor.py # Neural Pre-processor Brain (New)
 │   └── copilot_service.py # NLU & Conversational SOC Analysis
+├── utils/
+│   ├── syslog_buffer.py   # Redis Buffer Interface (New)
+│   └── ...
 ├── tools/                 # Custom CrewAI Tools (VT, AbuseIPDB, Wazuh, etc.)
-├── test/                  # Utility and data injection scripts (NEW)
+├── test/                  # Pipeline Simulation & Tests (Updated)
 ├── frontend/              # SOC Dashboard UI (Vite/React)
 └── data/                  # Persistent storage (SQLite DBs)
 ```
@@ -79,4 +84,4 @@ Use the FastAPI Docs (Swagger UI) available at:
 ---
 
 **Author**: PRAVEENKUMAR / KRYA SOLUTIONS PRIVATE LIMITED
-**Last Updated**: 2026-02-09
+**Last Updated**: 2026-02-11

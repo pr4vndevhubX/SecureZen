@@ -20,6 +20,7 @@ Complete instructions for setting up the SecureZen platform.
 
 - **Python 3.11 or higher**: Required for CrewAI and Pydantic V2 support.
 - **Git**: To clone the repository.
+- **Docker**: Optional, for running the Redis buffer.
 - **SQLite3**: For the default persistent database.
 - **API Keys**:
   - [VirusTotal](https://www.virustotal.com/gui/join-us) (Free tier available)
@@ -91,14 +92,24 @@ cd services/rag-service
 python main.py
 ```
 
-### 2. Start AI SOC Backend (Port 5000)
-This launches the FastAPI backend and dashboard server.
+### 3. Start Syslog-AI Pipeline
+This high-performance pipeline receives raw syslog and buffers it through Redis.
+
+**Run the Redis Buffer** (if using Docker):
 ```bash
-# From the project root
-python app.py
+docker run --name securezen-redis -p 6379:6379 -d redis
 ```
 
-### 3. Start Frontend Dashboard (Optional Development)
+**Start the Ingestion Services**:
+```bash
+# Terminal 1: Start the network listener (Port 5140)
+uv run python services/syslog_listener.py
+
+# Terminal 2: Start the neural brain (Brain analyzer)
+uv run python services/syslog_preprocessor.py
+```
+
+### 4. Start Frontend Dashboard (Optional Development)
 If you are developing the UI independently:
 ```bash
 cd frontend
@@ -148,4 +159,4 @@ If you see SQLite `database is locked`, ensure multiple services aren't trying t
 ---
 
 **Author**: PRAVEENKUMAR
-**Last Updated**: 2026-02-05
+**Last Updated**: 2026-02-11

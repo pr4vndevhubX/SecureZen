@@ -21,3 +21,8 @@ data/*.csv
 # Frontend dependencies and builds
 frontend/node_modules/
 frontend/dist/
+
+#Unnecessary files
+
+md_files/
+ 

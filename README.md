@@ -91,8 +91,18 @@ python main.py
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                       WAZUH SIEM (Alert Source)                      │
-│                    Standard OSSEC/Wazuh Infrastructure               │
+│                       EXTERNAL SYSLOG SOURCES                        │
+│                (Servers, Firewalls, Application Logs)                │
+└────────────────────────────┬────────────────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│              SYSLOG LISTENER & REDIS BUFFER (Port 5140)              │
+│                 "Shock Absorber" Ingestion Layer                     │
+└────────────────────────────┬────────────────────────────────────────┘
+                             ↓
+┌─────────────────────────────────────────────────────────────────────┐
+│                   NEURAL PRE-PROCESSING LAYER                        │
+│          Parsing, Filtering & High-Value Alert Promotion             │
 └────────────────────────────┬────────────────────────────────────────┘
                              ↓
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -107,10 +117,11 @@ python main.py
                              ↓
 ┌─────────────────────────────────────────────────────────────────────┐
 │                   MICROSERVICES LAYER                                │
-├─────────────────────────────────────────────────────────────────────┤
-│  RAG Service (8001)     Auth Service          Database (SQLite)     │
-│  • MITRE ATT&CK KB      • JWT Authentication  • Alert Persistence   │
-│  • Semantic Search      • RBAC                • Investigation Logs  │
+│  ├─────────────────────────────────────────────────────────────────┤ │
+│  │  RAG Service (8001)     Auth Service          Database (SQLite)   │ │
+│  │  • MITRE ATT&CK KB      • JWT Authentication  • Alert Persistence │ │
+│  │  • Semantic Search      • RBAC                • Investigation Logs│ │
+│  └─────────────────────────────────────────────────────────────────┘ │
 └────────────────────────────┬────────────────────────────────────────┘
                              ↓
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -171,6 +182,7 @@ Detailed documentation is available in the `docs/` directory:
 2.  **[INSTALLATION.md](docs/INSTALLATION.md)** - Comprehensive setup guide.
 3.  **[DEVELOPMENT.md](docs/DEVELOPMENT.md)** - Guide for contributors.
 4.  **[MONITORING.md](docs/MONITORING.md)** - Observability and metrics.
+5.  **[SYSLOG_PIPELINE.md](docs/arch/syslog_pipeline.md)** - Detailed Syslog-AI architecture.
 
 ---
 
@@ -196,5 +208,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 **Author**: PRAVEENKUMAR / KRYA SOLUTIONS PRIVATE LIMITED
 **Project**: [SecureZen GitHub](https://github.com/pr4vndevhubX/SecureZen)
 
-**Last Updated**: 2026-02-09
-**Version**: 1.3.0
+**Last Updated**: 2026-02-11
+**Version**: 1.4.0
