@@ -10,9 +10,10 @@ Comprehensive technical design and architectural documentation.
 1. [Architectural Overview](#architectural-overview)
 2. [Design Principles](#design-principles)
 3. [Component Architecture](#component-architecture)
-4. [Data Flow](#data-flow)
-5. [Agent Orchestration](#agent-orchestration)
-6. [Security Framework](#security-framework)
+4. [Modular Plugin System](#modular-plugin-system)
+5. [Data Flow (Standalone vs Overlay)](#data-flow)
+6. [Agent Orchestration](#agent-orchestration)
+7. [Security Framework](#security-framework)
 
 ---
 
@@ -51,20 +52,21 @@ Comprehensive technical design and architectural documentation.
 └─────────────────────────────────────────────────────────────────┘
                                ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│              INGESTION & BUFFERING LAYER (New)                   │
+│              INGESTION & BUFFERING LAYER                        │
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │  High-Performance Syslog Pipeline (Port 5140)             │  │
-│  │  • Syslog Ingestion ➔ Redis Buffer ➔ Neural Pre-processor   │  │
+│  │  • Syslog Ingestion ➔ Redis Buffer ➔ LogAI Pipeline        │  │
+│  │  • Preprocessing ➔ Parsing (Drain) ➔ Anomaly Promotion     │  │
 │  └───────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
-                               ↓
+                                ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│              CREWAI ORCHESTRATION LAYER                          │
-│  ┌───────────────────────────────────────────────────────────┐  │
-│  │  Autonomous Agent Swarms (10 Specialized Roles)           │  │
-│  │  • External Recon → Internal Correlation → AI Insight     │  │
-│  │  • Sequential Reasoning & Context Passing                 │  │
-│  └───────────────────────────────────────────────────────────┘  │
+│              MODULAR FEATURE ARCHITECTURE                       │
+│  ┌──────────────────┐  ┌─────────────────┐  ┌────────────────┐  │
+│  │ core/securezen   │  │ features/syslog │  │ features/wazuh │  │
+│  │ • Brain & Crew   │  │ • LogAI Source  │  │ • SIEM Backup  │  │
+│  │ • Dashboard API  │  │ • Neural Pipe   │  │ • Webhook In   │  │
+│  └──────────────────┘  └─────────────────┘  └────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
                                ↓
 ┌─────────────────────────────────────────────────────────────────┐
@@ -99,11 +101,9 @@ Combines external reputation feeds (global view) with internal Wazuh SIEM teleme
 ### AI SOC Backend (Port 5000)
 **Technology**: Python + FastAPI + SQLAlchemy/SQLite
 
-The central nervous system of SecureZen. It handles:
-- **Authentication**: JWT-based secure access for SOC analysts.
-- **Alert Ingestion**: Receiving telemetry from Wazuh agents.
-- **Dynamic Dashboarding**: Calculating real-time stats (Threat Funnel, Alert Trends).
-- **Crew Triggering**: Orchestrating the CrewAI "kickoff" process for critical IOCs.
+The system uses a **Multi-App Entry Point** model for robust feature separation:
+- **[base_app.py](file:///c:/Users/psuresh/OneDrive%20-%20KRYA%20SOLUTIONS%20PRIVATE%20LIMITED/Desktop/KYD/Agentic-ai-02/IP-alone-Crewai/ip-intel-crewai/core/securezen/base_app.py)**: The shared foundation containing authentication, middleware, and singleton database connections.
+- **Dedicated Servers**: Specialized server files (`server_standalone.py`, `server_overlay.py`) that only load the required API routes for specific product tiers.
 
 ### RAG Service (Port 8001)
 **Technology**: ChromaDB + Sentence Transformers
@@ -122,20 +122,43 @@ A conversational interface that provides:
 
 ---
 
+## Multi-App Architecture (Exclusive Product Tiers)
+
+SecureZen is structured as a **Multi-App platform**, allowing for clean separation between raw log analysis and SIEM enhancement.
+
+### 🧠 1. Standalone Raw Log Intelligence
+- **Entry Points**: `syslog/server.py` and `syslog/dashboard.py`.
+- **Engine**: **LogAI** Neural Pipeline.
+- **Focus**: Pre-SIEM anomaly detection, log clustering, and pattern analysis.
+- **Deployment**: `start_standalone.bat`.
+
+### 🛡️ 2. SIEM Overlay AI SOC
+- **Entry Points**: `siem/server.py` and `siem/dashboard.py`.
+- **Engine**: **CrewAI** Agentic Swarm.
+- **Focus**: Autonomous investigation of SIEM alerts and interactive incident response.
+- **Deployment**: `start_overlay.bat`.
+
+### ⚛️ Build-Time Frontend Modularity
+The React dashboard utilizes `VITE_SECUREZEN_MODE` environment variables to toggle UI features at build-time, ensuring that clients only receive the code for their purchased features.
+
+---
+
 ## Data Flow
 
-### 1. Alert Triage Flow
-1. **Event**: A security event occurs on an endpoint.
-2. **Detection**: Wazuh manager triggers a webhook to `SecureZen`.
-3. **Filtering**: `app.py` assesses the rule level.
-4. **Intelligence Enrichment**: 
-   - Level 8+: AI generates a simplified explanation.
-   - Level 10+: Full CrewAI investigation is triggered automatically.
+### 1. Alert Triage Flow (Syslog-LogAI)
+1. **Event**: A raw syslog event occurs on a network device or server.
+2. **Ingestion**: `syslog_listener.py` captures the UDP packet and pushes to Redis.
+3. **Deep Analysis**: `logai_pipeline.py` consumes the log:
+   - **Clean**: Normalizes text and removes noise.
+   - **Parse**: Uses the **Drain** algorithm to extract templates and parameters.
+   - **Detect**: Heuristic and ML-based anomaly detection identifies threats.
+4. **Promotion**: High-score events are promoted to the `AlertStorage` database.
+5. **Investigation**: CrewAI investigation is triggered for critical detections.
 
 ### 2. Investigation Swarm Flow
 1. **Coordinator Agent** validates the target IOC (IP/Domain).
 2. **Intelligence Agents** (VT, AbuseIPDB, Yeti) gather global reputation data.
-3. **Internal Data Agents** (SIEM Historian) query Wazuh for local correlation.
+3. **Internal Data Agents** (SIEM Historian) query alerts for local correlation.
 4. **Context Agent** maps findings to MITRE ATT&CK via RAG.
 5. **Correlation Agent** synthesizes a weighted risk score and verdict.
 6. **Report Agent** compiles a Markdown report, subsequently converted to PDF.

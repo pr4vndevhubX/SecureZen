@@ -1,18 +1,21 @@
-"""
-User Authentication Database
-Manages user registration, login, and session management
-"""
-
+import os
 import sqlite3
 import bcrypt
 from datetime import datetime
-from pathlib import Path
 from typing import Optional, Dict
 
+# Get project root (one level up from utils)
+UTILS_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(UTILS_DIR)
+
 class UserDatabase:
-    def __init__(self, db_path: str = "data/users.db"):
-        self.db_path = db_path
-        Path(db_path).parent.mkdir(parents=True, exist_ok=True)
+    def __init__(self, db_path: str = None):
+        if db_path is None:
+            self.db_path = os.path.join(PROJECT_ROOT, "data/users.db")
+        else:
+            self.db_path = db_path
+            
+        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self._init_db()
     
     def _init_db(self):

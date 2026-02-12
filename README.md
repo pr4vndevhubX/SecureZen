@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-**SecureZen** is an advanced threat intelligence and autonomous SOC platform that integrates **Wazuh SIEM** with the **CrewAI multi-agent framework**. It automates the investigation of security alerts and indicators of compromise (IOCs) using a swarm of specialized AI agents. By combining large language models (LLMs), internal RAG systems for MITRE ATT&CK mapping, and external threat feeds, SecureZen provides deep, context-aware security analysis with professional PDF reporting.
+**SecureZen** is an advanced threat intelligence and autonomous SOC platform that leverages **LogAI** for deep analysis of raw **Syslog** streams. It automates the investigation of security alerts and indicators of compromise (IOCs) using a swarm of specialized AI agents. By combining large language models (LLMs), internal RAG systems for MITRE ATT&CK mapping, and external threat feeds, SecureZen provides context-aware security intelligence with a modular architecture that supports both raw log analysis and optional SIEM integrations like Wazuh.
 
 ### Key Capabilities
 
@@ -63,25 +63,23 @@ pip install -r requirements.txt
 
 # 4. Configure environment
 cp .env.example .env
-nano .env
-# Required: VIRUSTOTAL_API_KEY, ABUSEIPDB_API_KEY, GROQ_API_KEY, JWT_SECRET_KEY
+# Set VIRUSTOTAL_API_KEY, ABUSEIPDB_API_KEY, GROQ_API_KEY, JWT_SECRET_KEY
 
-# 5. Start the backend services
-# Start RAG service (ensure port 8001 is used)
-cd services/rag-service && python main.py &
+# 5. Start the Product Tier you need:
 
-# Start main API (Port 5000)
-cd ../..
-python app.py
+# OPTION A: Standalone Raw Log Intelligence
+./start_standalone.bat
+
+# OPTION B: SIEM Overlay AI SOC
+./start_overlay.bat
 ```
 
-### First Investigation
+### Which version to use?
 
-```bash
-# Trigger an investigation via CLI
-python main.py
-# Enter IP: 8.8.8.8
-```
+| Product Version | Run Command | Use Case |
+| :--- | :--- | :--- |
+| **Standalone** | `start_standalone.bat` | Clients with raw syslogs; focus on LogAI clustering. |
+| **SIEM Overlay** | `start_overlay.bat` | Clients with Wazuh; focus on Agentic investigations. |
 
 ---
 
@@ -101,18 +99,17 @@ python main.py
 └────────────────────────────┬────────────────────────────────────────┘
                              ↓
 ┌─────────────────────────────────────────────────────────────────────┐
-│                   NEURAL PRE-PROCESSING LAYER                        │
-│          Parsing, Filtering & High-Value Alert Promotion             │
+│              LOGAI DEEP ANALYSIS PIPELINE (New)                      │
+│          Preprocessing, Parsing (Drain) & Anomaly Detection           │
 └────────────────────────────┬────────────────────────────────────────┘
                              ↓
 ┌─────────────────────────────────────────────────────────────────────┐
-│              INTEGRATION GATEWAY / WEBHOOK (Port 5000)               │
-│                      AI SOC Platform Backend                         │
+│                SECUREZEN CORE BACKEND (Port 5000)                    │
+│                 (Modular Architecture: core/securezen)               │
 ├─────────────────────────────────────────────────────────────────────┤
 │  Routing & Triage Logic:                                             │
-│  • Level < 6   → Low Priority / Dashboard Only                      │
-│  • Level 8-9   → AI Explanation + Enrichment                        │
-│  • Level 10+   → Neural Swarm Investigation Flagged                 │
+│  • AI Pipeline Alerts → Autonomous Neural Swarm Investigation       │
+│  • Optional SIEM Connectors (Wazuh) → features/wazuh_siem            │
 └────────────────────────────┬────────────────────────────────────────┘
                              ↓
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -186,6 +183,25 @@ Detailed documentation is available in the `docs/` directory:
 
 ---
 
+---
+
+## 📅 Version 1.5.0 Update (Feb 12, 2026)
+
+### 🚀 Major Refactor: Multi-App Architecture 
+SecureZen has been transformed from a hybrid single-app into a specialized **Multi-App platform**.
+
+- **Dedicated Product Tiers**: Clean separation between `syslog` (LogAI) and `siem` (Wazuh/CrewAI) features.
+- **Product Folders**: Specialized logic located in `core/securezen/syslog` and `core/securezen/siem`.
+- **Shared Foundation**: Core logic extracted to `base_app.py` for high performance and consistency.
+- **Build-Time Toggles**: React frontend now uses environment variables to physically toggle features.
+
+### 🛠️ Key Improvements
+- **Absolute Path Resolution**: Fixed recurring database errors by implementing robust absolute path resolution in all utility classes (`ThreatDatabase`, `UserDatabase`).
+- **One-Click Startup**: Added `start_standalone.bat` and `start_overlay.bat` for immediate deployment of specific tiers.
+- **Legacy Cleanup**: Removed over 500 lines of redundant hybrid code.
+
+---
+
 ## Development Roadmap
 
 - [x] Multi-Agent Core Orchestration
@@ -208,5 +224,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 **Author**: PRAVEENKUMAR / KRYA SOLUTIONS PRIVATE LIMITED
 **Project**: [SecureZen GitHub](https://github.com/pr4vndevhubX/SecureZen)
 
-**Last Updated**: 2026-02-11
-**Version**: 1.4.0
+**Last Updated**: 2026-02-12
+**Version**: 1.5.0

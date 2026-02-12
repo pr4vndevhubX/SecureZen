@@ -83,30 +83,46 @@ JWT_SECRET_KEY=generate_a_random_string_for_production
 
 ## Service Deployment
 
-SecureZen requires multiple services to be running for full functionality.
+SecureZen is now optimized for **One-Click Product Tier** deployment.
 
-### 1. Start RAG Service (Port 8001)
-The RAG service provides MITRE ATT&CK context to the agents.
-```bash
-cd services/rag-service
-python main.py
-```
+### 🚀 Simplified Execution (Recommended)
 
-### 3. Start Syslog-AI Pipeline
-This high-performance pipeline receives raw syslog and buffers it through Redis.
+Choose your product tier and run the corresponding batch file from the **Project Root**:
 
-**Run the Redis Buffer** (if using Docker):
-```bash
-docker run --name securezen-redis -p 6379:6379 -d redis
-```
+| Mode | Command | Description |
+| :---: | :--- | :--- |
+| **Standalone** | `start_standalone.bat` | Starts the LogAI Backend and Standalone Dashboard. |
+| **SIEM Overlay** | `start_overlay.bat` | Starts the SIEM-Integrated Backend and Overlay Dashboard. |
 
-**Start the Ingestion Services**:
+### 🧠 Advanced: Manual Service Start
+
+If you need to start individual components manually:
+
+**1. Shared Background Services**
 ```bash
 # Terminal 1: Start the network listener (Port 5140)
 uv run python services/syslog_listener.py
 
-# Terminal 2: Start the neural brain (Brain analyzer)
+# Terminal 2: Start the LogAI Neural Pipeline (Deep Analysis)
 uv run python services/syslog_preprocessor.py
+```
+
+**2. Product Backend Servers**
+```bash
+# Option A: Standalone Server
+uv run python core/securezen/syslog/server.py
+
+# Option B: SIEM Overlay Server
+uv run python core/securezen/siem/server.py
+```
+
+**3. Frontend Dev Server**
+```bash
+cd frontend
+# For Standalone Mode:
+npm run dev -- --mode standalone
+# For Overlay Mode:
+npm run dev -- --mode overlay
 ```
 
 ### 4. Start Frontend Dashboard (Optional Development)

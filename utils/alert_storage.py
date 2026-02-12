@@ -1,23 +1,27 @@
-"""
-Alert Storage - SQLite Database
-Stores Wazuh alerts with IP extraction and processing state tracking
-"""
-
+import os
 import sqlite3
 import json
 import re
-from pathlib import Path
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional, Tuple
+
+# Get project root (one level up from utils)
+UTILS_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(UTILS_DIR)
 
 class AlertStorage:
     """
     SQLite-based storage for Wazuh alerts with intelligent IP extraction
     """
     
-    def __init__(self, db_path: str = "data/wazuh_alerts.db"):
-        self.db_path = Path(db_path)
-        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+    def __init__(self, db_path: str = None):
+        if db_path is None:
+            self.db_path = os.path.join(PROJECT_ROOT, "data/wazuh_alerts.db")
+        else:
+            self.db_path = db_path
+            
+        # Ensure data directory exists
+        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         
         # Initialize database
         self._init_database()

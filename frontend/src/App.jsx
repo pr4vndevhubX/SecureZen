@@ -19,6 +19,8 @@ import Login from './components/Login';
 import Copilot from './components/Copilot';
 import { API_BASE_URL } from './config';
 
+const MODE = import.meta.env.VITE_SECUREZEN_MODE || 'overlay'; // default to overlay
+
 
 const CustomPieTooltip = ({ active, payload, total }) => {
     if (active && payload && payload.length) {
@@ -313,13 +315,14 @@ const AISOCDashboard = () => {
     const navItems = {
         analytics: [
             { id: 'dashboard', label: 'Performance Dashboard', icon: Activity },
-            { id: 'events', label: 'Alert Dashboard', icon: Shield },
+            ...(MODE === 'overlay' ? [{ id: 'events', label: 'Alert Dashboard', icon: Shield }] : []),
         ],
         insights: [
-            { id: 'framework', label: 'MITRE Assistant', icon: Bot },
+            ...(MODE === 'overlay' ? [{ id: 'framework', label: 'MITRE Assistant', icon: Bot }] : []),
         ],
         threats: [
-            { id: 'intelligence', label: 'IP Intelligence', icon: Search },
+            ...(MODE === 'standalone' ? [{ id: 'intelligence', label: 'Syslog Intelligence', icon: Search }] : []),
+            ...(MODE === 'overlay' ? [{ id: 'intelligence', label: 'IP Intelligence', icon: Search }] : []),
         ]
     };
 
@@ -576,14 +579,25 @@ const AISOCDashboard = () => {
 
                                     {/* Intelligence Charts Section */}
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                        <KillChainChart
-                                            data={killChainData}
-                                            onPhaseClick={(phase) => {
-                                                setSearchTerm(phase);
-                                                setActiveTab('events');
-                                            }}
-                                        />
-                                        <CveRadar data={radarData} />
+                                        {MODE === 'overlay' && (
+                                            <>
+                                                <KillChainChart
+                                                    data={killChainData}
+                                                    onPhaseClick={(phase) => {
+                                                        setSearchTerm(phase);
+                                                        setActiveTab('events');
+                                                    }}
+                                                />
+                                                <CveRadar data={radarData} />
+                                            </>
+                                        )}
+                                        {MODE === 'standalone' && (
+                                            <div className="lg:col-span-2 bg-[#0a0e27] rounded-3xl p-8 border border-[#1a1f3a] shadow-2xl h-[400px]">
+                                                <h3 className="text-white font-bold mb-4">LogAI Anomaly Clusters</h3>
+                                                <p className="text-gray-400">Standalone syslog analysis mode active. Showing neural log patterns.</p>
+                                                {/* Placeholder for LogAI specific visualization */}
+                                            </div>
+                                        )}
                                     </div>
 
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

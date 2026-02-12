@@ -1,14 +1,21 @@
-"""
-Database handler for storing Wazuh alerts and analysis results
-"""
-
+import os
 import sqlite3
 from datetime import datetime
 import json
 
+# Get project root (one level up from utils)
+UTILS_DIR = os.path.dirname(os.path.abspath(__file__))
+PROJECT_ROOT = os.path.dirname(UTILS_DIR)
+
 class ThreatDatabase:
-    def __init__(self, db_path='data/wazuh_alerts.db'):
-        self.db_path = db_path
+    def __init__(self, db_path=None):
+        if db_path is None:
+            self.db_path = os.path.join(PROJECT_ROOT, 'data/wazuh_alerts.db')
+        else:
+            self.db_path = db_path
+        
+        # Ensure data directory exists
+        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
         self.init_database()
     
     def init_database(self):
