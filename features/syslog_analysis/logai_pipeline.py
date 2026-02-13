@@ -6,6 +6,8 @@ import pandas as pd
 from datetime import datetime
 
 # Add project root and LogAI library to path
+# Path: features/syslog_analysis/logai_pipeline.py -> project_root is 3 levels up
+# (Note: Previous code was 3 levels, but let's be explicit and check)
 project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.append(project_root)
 sys.path.append(os.path.join(os.path.dirname(__file__), "lib"))
@@ -16,7 +18,7 @@ from utils.alert_storage import AlertStorage
 # Import LogAI components
 from logai.preprocess.preprocessor import Preprocessor, PreprocessorConfig
 from logai.information_extraction.log_parser import LogParser, LogParserConfig
-from logai.analysis.anomaly_detector import AnomalyDetector, AnomalyDetectorConfig
+from logai.analysis.anomaly_detector import AnomalyDetector, AnomalyDetectionConfig
 
 class LogAIPipeline:
     """
@@ -39,7 +41,7 @@ class LogAIPipeline:
         self.parser = LogParser(self.parser_config)
         
         # Initialize Anomaly Detector
-        self.anomaly_config = AnomalyDetectorConfig(algo_name="one_class_svm")
+        self.anomaly_config = AnomalyDetectionConfig(algo_name="one_class_svm")
         self.anomaly_detector = AnomalyDetector(self.anomaly_config)
 
     def process_logs(self, raw_logs: list, source_ip: str):

@@ -185,6 +185,23 @@ Detailed documentation is available in the `docs/` directory:
 
 ---
 
+## 📅 Version 1.6.0 Update (Feb 13, 2026)
+
+### 🛡️ Standalone Syslog Isolation
+SecureZen now features a fully isolated, high-performance architecture for standalone raw log intelligence.
+
+- **Redis-Buffered Ingestion**: Implemented a "Shock Absorber" layer using Redis (`securezen_raw_syslog`) to handle massive log bursts without dropping packets on Port 5140.
+- **LogAI Neural Pipeline**: Integrated deep analysis using:
+    - **Drain Algorithm**: Sophisticated parsing of unstructured logs into reusable templates.
+    - **Isolation Forest**: Unsupervised ML for statistical anomaly detection.
+- **Hybrid Intelligence**: Three-layer classification system:
+    1. **ML Anomaly Core**: Statistical rarity detection.
+    2. **Rule Enrichment**: Deterministic mapping to known security patterns.
+    3. **LLM Reasoning**: Gemini-powered conversational context for high-fidelity alerts.
+- **Isolated Data Persistence**: All standalone alerts are now stored in `data/syslog_alerts.db`, completely separate from SIEM data to prevent cross-contamination.
+
+---
+
 ## 📅 Version 1.5.0 Update (Feb 12, 2026)
 
 ### 🚀 Major Refactor: Multi-App Architecture 
@@ -224,5 +241,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 **Author**: PRAVEENKUMAR / KRYA SOLUTIONS PRIVATE LIMITED
 **Project**: [SecureZen GitHub](https://github.com/pr4vndevhubX/SecureZen)
 
-**Last Updated**: 2026-02-12
-**Version**: 1.5.0
+**Last Updated**: 2026-02-13
+**Version**: 1.6.0

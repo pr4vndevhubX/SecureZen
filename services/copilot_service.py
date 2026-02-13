@@ -13,6 +13,15 @@ class CopilotService:
         self.db = db_connector
         self.chat_history: List[Dict[str, str]] = []  # Stores last 10 messages: [{"role": "user/assistant", "content": "..."}]
 
+    async def get_response(self, message: str) -> str:
+        """
+        Backward compatibility wrapper for base_app.py
+        """
+        result = self.process_message(message)
+        if isinstance(result, dict) and "content" in result:
+            return result["content"]
+        return str(result)
+
     def process_message(self, message: str) -> Dict[str, Any]:
         """
         Process a user message and return a structured response.

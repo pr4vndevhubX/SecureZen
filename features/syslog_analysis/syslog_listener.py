@@ -4,7 +4,8 @@ import os
 from datetime import datetime
 
 # Add project root to path for imports
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+# Path: features/syslog_analysis/syslog_listener.py -> project_root is 2 levels up
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from utils.syslog_buffer import SyslogBuffer
 

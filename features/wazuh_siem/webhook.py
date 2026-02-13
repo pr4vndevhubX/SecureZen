@@ -13,7 +13,10 @@ import traceback
 from datetime import datetime, timedelta
 from typing import Optional
 
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Add project root to path (3 levels up from here: features/wazuh_siem/webhook.py -> features/wazuh_siem -> features -> root)
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(os.path.dirname(current_dir))
+sys.path.append(project_root)
 
 from utils.alert_storage import AlertStorage
 

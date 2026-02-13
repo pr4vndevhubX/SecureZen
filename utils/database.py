@@ -10,9 +10,16 @@ PROJECT_ROOT = os.path.dirname(UTILS_DIR)
 class ThreatDatabase:
     def __init__(self, db_path=None):
         if db_path is None:
-            self.db_path = os.path.join(PROJECT_ROOT, 'data/wazuh_alerts.db')
+            config_path = os.getenv("SECUREZEN_DB_PATH")
+            if config_path:
+                self.db_path = config_path
+            else:
+                # Fix for path resolution - use absolute path to ensure we hit the right DB
+                self.db_path = os.path.join(PROJECT_ROOT, 'data', 'wazuh_alerts.db')
         else:
             self.db_path = db_path
+            
+        print(f"DEBUG: ThreatDatabase using path: {self.db_path}")
         
         # Ensure data directory exists
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
@@ -65,6 +72,36 @@ class ThreatDatabase:
             )
         ''')
         
+        # Main alerts table (Shared with AlertStorage)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS alerts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                wazuh_id TEXT,
+                timestamp TEXT NOT NULL,
+                rule_id TEXT,
+                rule_level INTEGER,
+                rule_description TEXT,
+                agent_name TEXT,
+                agent_ip TEXT,
+                srcip TEXT,
+                dstip TEXT,
+                full_alert TEXT NOT NULL,
+                received_at TEXT NOT NULL,
+                processed INTEGER DEFAULT 0,
+                processed_at TEXT,
+                classification TEXT,
+                severity TEXT,
+                UNIQUE(wazuh_id, timestamp)
+            )
+        ''')
+        
+        # Migration: Add status column if it doesn't exist
+        try:
+            cursor.execute("SELECT status FROM alerts LIMIT 1")
+        except sqlite3.OperationalError:
+            print(f"Adding 'status' column to {self.db_path}...")
+            cursor.execute("ALTER TABLE alerts ADD COLUMN status TEXT DEFAULT 'Open'")
+        
         # CVE Intelligence table
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS cves (
@@ -105,6 +142,10 @@ class ThreatDatabase:
             GROUP BY sev_label
         ''')
         stats['severity_counts'] = dict(cursor.fetchall())
+        
+        # Status counts (Open, Investigating, Closed)
+        cursor.execute("SELECT status, COUNT(*) FROM alerts GROUP BY status")
+        stats['status_counts'] = dict(cursor.fetchall())
         
         # Total alerts (mapped to Threat Indicators/Detections)
         cursor.execute('SELECT COUNT(*) FROM alerts')
@@ -304,7 +345,7 @@ class ThreatDatabase:
         finally:
             conn.close()
     
-    def get_all_alerts(self, level_min=7):
+    def get_all_alerts(self, level_min=1, limit=1000):
         """Get all alerts above certain level from webhook database"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
@@ -329,17 +370,40 @@ class ThreatDatabase:
                         ELSE 'Low'
                     END
                 ) as severity,
-                rule_description as message
+                rule_description as message,
+                full_alert
             FROM alerts
             WHERE rule_level >= ?
             ORDER BY timestamp DESC
-        ''', (level_min,))
+            LIMIT ?
+        ''', (level_min, limit))
         
         columns = [description[0] for description in cursor.description]
-        alerts = [dict(zip(columns, row)) for row in cursor.fetchall()]
+        raw_alerts = [dict(zip(columns, row)) for row in cursor.fetchall()]
         
+        processed_alerts = []
+        for a in raw_alerts:
+            # Deep extraction for MITRE data
+            full = {}
+            try:
+                full = json.loads(a.get('full_alert', '{}'))
+            except: pass
+            
+            rule = full.get('rule', {})
+            mitre = rule.get('mitre', {})
+            
+            # Use found mitre data or fallback to common mappings
+            a['rule_mitre_id'] = mitre.get('id', [''])[0] if isinstance(mitre.get('id'), list) else mitre.get('id', '')
+            a['rule_mitre_tactic'] = mitre.get('tactic', [''])[0] if isinstance(mitre.get('tactic'), list) else mitre.get('tactic', '')
+            
+            # Ensure message is always present
+            if not a.get('message'):
+                a['message'] = a.get('rule_description', 'No description available')
+                
+            processed_alerts.append(a)
+            
         conn.close()
-        return alerts
+        return processed_alerts
     
     def get_recent_analyses(self, limit=10):
         """Get recent IP analysis results"""

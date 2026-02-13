@@ -55,8 +55,9 @@ Comprehensive technical design and architectural documentation.
 │              INGESTION & BUFFERING LAYER                        │
 │  ┌───────────────────────────────────────────────────────────┐  │
 │  │  High-Performance Syslog Pipeline (Port 5140)             │  │
-│  │  • Syslog Ingestion ➔ Redis Buffer ➔ LogAI Pipeline        │  │
-│  │  • Preprocessing ➔ Parsing (Drain) ➔ Anomaly Promotion     │  │
+│  │  • UDP Ingestion ➔ Redis Buffer ➔ LogAI Worker Pipeline   │  │
+│  │  • Preprocessing ➔ Drain Parsing ➔ ML Anomaly Detection   │  │
+│  │  • Severity Escalation (Gemini reasoning) ➔ AlertStorage  │  │
 │  └───────────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────┘
                                 ↓
@@ -174,4 +175,4 @@ SecureZen uses a **Sequential Process** via CrewAI:
 ---
 
 **Author**: PRAVEENKUMAR / KRYA SOLUTIONS PRIVATE LIMITED
-**Last Updated**: 2026-02-11
+**Last Updated**: 2026-02-13

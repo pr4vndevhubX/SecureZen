@@ -16,7 +16,11 @@ class AlertStorage:
     
     def __init__(self, db_path: str = None):
         if db_path is None:
-            self.db_path = os.path.join(PROJECT_ROOT, "data/wazuh_alerts.db")
+            config_path = os.getenv("SECUREZEN_DB_PATH")
+            if config_path:
+                self.db_path = config_path
+            else:
+                self.db_path = os.path.join(PROJECT_ROOT, "data/wazuh_alerts.db")
         else:
             self.db_path = db_path
             
@@ -52,6 +56,7 @@ class AlertStorage:
                 processed_at TEXT,
                 classification TEXT,
                 severity TEXT,
+                status TEXT DEFAULT 'Open',
                 UNIQUE(wazuh_id, timestamp)
             )
         """)
@@ -246,6 +251,10 @@ class AlertStorage:
             else:
                 print(f"⚠️  Stored alert {alert_id} | No IPs extracted")
             
+            # Update MITRE stats
+            self._update_mitre_stats(cursor, alert)
+            conn.commit()
+            
             return alert_id
         
         except sqlite3.IntegrityError:
@@ -260,6 +269,73 @@ class AlertStorage:
         
         finally:
             conn.close()
+
+    def _update_mitre_stats(self, cursor, alert):
+        """Update MITRE statistics based on alert data"""
+        try:
+            rule = alert.get('rule', {})
+            mitre = rule.get('mitre', {})
+            
+            # Extract ID and Tactic
+            mitre_id = mitre.get('id', [])
+            tactic = mitre.get('tactic', [])
+            
+            if not mitre_id:
+                return
+
+            # Handle list or string
+            if isinstance(mitre_id, list):
+                mitre_id = mitre_id[0] if mitre_id else None
+            if isinstance(tactic, list):
+                tactic = tactic[0] if tactic else None
+                
+            if not mitre_id:
+                return
+
+            # Determine severity increment
+            level = int(rule.get('level', 0))
+            is_critical = 1 if level >= 12 else 0
+            is_high = 1 if level >= 10 and level < 12 else 0
+            is_medium = 1 if level >= 5 and level < 10 else 0
+            is_low = 1 if level < 5 else 0
+
+            # Upsert into mitre_statistics
+            cursor.execute("SELECT id FROM mitre_statistics WHERE technique_id = ?", (mitre_id,))
+            row = cursor.fetchone()
+            
+            if row:
+                # Update
+                cursor.execute("""
+                    UPDATE mitre_statistics 
+                    SET alert_count = alert_count + 1,
+                        last_detected = ?,
+                        severity_critical = severity_critical + ?,
+                        severity_high = severity_high + ?,
+                        severity_medium = severity_medium + ?,
+                        severity_low = severity_low + ?
+                    WHERE id = ?
+                """, (
+                    datetime.utcnow().isoformat(),
+                    is_critical, is_high, is_medium, is_low,
+                    row[0]
+                ))
+            else:
+                # Insert
+                cursor.execute("""
+                    INSERT INTO mitre_statistics (
+                        technique_id, technique_name, tactic, alert_count, last_detected,
+                        severity_critical, severity_high, severity_medium, severity_low
+                    ) VALUES (?, ?, ?, 1, ?, ?, ?, ?, ?)
+                """, (
+                    mitre_id, 
+                    f"Technique {mitre_id}", 
+                    tactic or 'Unknown', 
+                    datetime.utcnow().isoformat(),
+                    is_critical, is_high, is_medium, is_low
+                ))
+                
+        except Exception as e:
+            print(f"⚠️ Error updating MITRE stats: {e}")
     
     def search_alerts_by_ip(self, ip_address: str, days: int = 30) -> List[Dict]:
         """

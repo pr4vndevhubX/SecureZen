@@ -5,7 +5,7 @@ import json
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 import jwt
-from fastapi import FastAPI, HTTPException, Depends, status
+from fastapi import FastAPI, HTTPException, Depends, status, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, EmailStr
@@ -80,7 +80,12 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 # Shared DB instances (Singletons)
-db = ThreatDatabase(db_path=os.path.join(project_root, "data/wazuh_alerts.db"))
+default_db = "data/wazuh_alerts.db"
+if os.getenv("SECUREZEN_MODE") == "standalone":
+    default_db = "data/syslog_alerts.db"
+
+db_path = os.getenv("SECUREZEN_DB_PATH", os.path.join(project_root, default_db))
+db = ThreatDatabase(db_path=db_path)
 user_db = UserDatabase(db_path=os.path.join(project_root, "data/users.db"))
 connector = WazuhConnector()
 copilot = CopilotService(db_connector=db)

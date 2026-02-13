@@ -126,9 +126,13 @@ export const MitreAssistant = ({ isInvestigationMode = false }) => {
         setIsLoading(true);
         setResults("🧠 Querying MITRE RAG Knowledge Base...");
         try {
+            const token = localStorage.getItem('auth_token');
             const res = await fetch(`${API_BASE_URL}/api/mitre/search`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ message: query })
             });
             const data = await res.json();

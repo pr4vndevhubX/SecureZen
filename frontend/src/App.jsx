@@ -19,7 +19,8 @@ import Login from './components/Login';
 import Copilot from './components/Copilot';
 import { API_BASE_URL } from './config';
 
-const MODE = import.meta.env.VITE_SECUREZEN_MODE || 'overlay'; // default to overlay
+// Final Unified Hybrid Mode Implementation
+const API_MODE_FALLBACK = import.meta.env.VITE_SECUREZEN_MODE || 'overlay';
 
 
 const CustomPieTooltip = ({ active, payload, total }) => {
@@ -56,7 +57,17 @@ const AISOCDashboard = () => {
     });
     const [activeTab, setActiveTab] = useState('dashboard');
     const [eventFilter, setEventFilter] = useState('All');
+    const [statusFilter, setStatusFilter] = useState('All'); // Added status state
     const [loading, setLoading] = useState(true);
+
+    // ... (lines 60-315)
+
+    const navigateToEvents = (severity, status = 'All') => {
+        setSearchTerm('');
+        setEventFilter(severity);
+        setStatusFilter(status);
+        setActiveTab('events');
+    };
     const [isRefreshing, setIsRefreshing] = useState(false);
     const [analysis, setAnalysis] = useState(null);
     const [alertTypes, setAlertTypes] = useState([]);
@@ -71,9 +82,28 @@ const AISOCDashboard = () => {
     });
     const [isSidebarHovered, setIsSidebarHovered] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
+    const [simulationMode, setSimulationMode] = useState(true);
+    const [lastRefresh, setLastRefresh] = useState(new Date().toLocaleTimeString());
+    const [dashboardMode, setDashboardMode] = useState(API_MODE_FALLBACK);
+    const [configLoaded, setConfigLoaded] = useState(false);
 
 
 
+
+    // Configuration and Mode Detection
+    const fetchConfig = async () => {
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/config`);
+            if (res.ok) {
+                const data = await res.json();
+                setDashboardMode(data.mode || 'overlay');
+            }
+        } catch (error) {
+            console.error('Config fetch failed, using fallback:', error);
+        } finally {
+            setConfigLoaded(true);
+        }
+    };
 
     // Authentication Functions
     const verifyAuth = async () => {
@@ -126,9 +156,13 @@ const AISOCDashboard = () => {
         setAnalysis({ status: 'running', analysis: `Agent swarm initialized for ${ioc}...` });
 
         try {
+            const token = localStorage.getItem('auth_token');
             const response = await fetch(`${API_BASE_URL}/api/analyze-ioc`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
                 body: JSON.stringify({ ioc })
             });
             const data = await response.json();
@@ -139,23 +173,27 @@ const AISOCDashboard = () => {
     };
 
     useEffect(() => {
-        verifyAuth();
+        const init = async () => {
+            await fetchConfig();
+            await verifyAuth();
+        };
+        init();
     }, []);
 
     useEffect(() => {
-        if (isAuthenticated) {
+        if (isAuthenticated && configLoaded) {
             fetchDashboardData();
-            const interval = setInterval(fetchDashboardData, 30000);
+            const interval = setInterval(fetchDashboardData, 5000); // Poll every 5 seconds for live updates
             return () => clearInterval(interval);
         }
-    }, [isAuthenticated]);
+    }, [isAuthenticated, configLoaded]);
 
     const getKillChainPhase = (alert) => {
-        const tactic = (alert.mitreTactic || '').toLowerCase();
-        const msg = (alert.message || '').toLowerCase();
-        const type = (alert.type || '').toLowerCase();
+        const tactic = (alert.mitreTactic || alert.rule_mitre_tactic || '').toLowerCase();
+        const msg = (alert.message || alert.rule_description || '').toLowerCase();
+        const type = (alert.type || alert.rule_description || '').toLowerCase();
 
-        // 1. MITRE Tactic Mapping
+        // 1. MITRE Tactic Mapping (High Priority)
         if (tactic.includes('reconnaissance')) return 'Reconnaissance';
         if (tactic.includes('resource development')) return 'Weaponization';
         if (tactic.includes('initial access')) return 'Delivery';
@@ -164,18 +202,18 @@ const AISOCDashboard = () => {
         if (tactic.includes('command and control')) return 'Command & Control';
         if (tactic.includes('exfiltration') || tactic.includes('impact')) return 'Actions on Objectives';
 
-        // 2. Keyword Fallback
-        if (msg.includes('scan') || msg.includes('recon') || type.includes('scan')) return 'Reconnaissance';
-        if (msg.includes('malware') || msg.includes('payload') || msg.includes('exploit')) return 'Weaponization';
-        if (msg.includes('phish') || msg.includes('delivery') || msg.includes('attachment')) return 'Delivery';
-        if (msg.includes('brute force') || msg.includes('login') || msg.includes('exploit')) return 'Exploitation';
+        // 2. Keyword Fallback (Medium Priority)
+        if (msg.includes('scan') || msg.includes('recon') || type.includes('scan') || msg.includes('integrity check')) return 'Reconnaissance';
+        if (msg.includes('malware') || msg.includes('payload') || msg.includes('exploit') || msg.includes('virus')) return 'Weaponization';
+        if (msg.includes('phish') || msg.includes('delivery') || msg.includes('attachment') || msg.includes('blocked url')) return 'Delivery';
+        if (msg.includes('brute force') || msg.includes('login') || msg.includes('exploit') || msg.includes('failure')) return 'Exploitation';
         if (msg.includes('backdoor') || msg.includes('persistence') || msg.includes('registry')) return 'Installation';
         if (msg.includes('c2') || msg.includes('beacon') || msg.includes('connection')) return 'Command & Control';
-        if (msg.includes('exfil') || msg.includes('theft') || msg.includes('ransom')) return 'Actions on Objectives';
+        if (msg.includes('exfil') || msg.includes('theft') || msg.includes('ransom') || msg.includes('impact')) return 'Actions on Objectives';
 
-        // 3. Default based on severity if nothing else matches
+        // 3. Default based on severity
         if (alert.severity === 'Critical') return 'Actions on Objectives';
-        if (alert.severity === 'High') return 'Exploitation';
+        if (alert.severity === 'High' || alert.severity === 'Major') return 'Exploitation';
         return 'Reconnaissance';
     };
 
@@ -210,12 +248,18 @@ const AISOCDashboard = () => {
     const fetchDashboardData = async () => {
         setIsRefreshing(true);
         try {
-            const res = await fetch(`${API_BASE_URL}/api/dashboard-stats`);
+            const token = localStorage.getItem('auth_token');
+            const res = await fetch(`${API_BASE_URL}/api/dashboard-stats`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
             const data = await res.json();
 
             if (data.alerts) {
                 const formattedAlerts = data.alerts.map(a => {
                     const alertObj = {
+                        ...a, // Pass all raw fields
                         time: new Date(a.timestamp).toLocaleString(),
                         alertId: a.alert_id,
                         type: a.rule_description,
@@ -224,7 +268,8 @@ const AISOCDashboard = () => {
                         entity: a.agent_name || a.src_ip || a.srcip,
                         srcIp: a.src_ip || a.srcip,
                         mitreId: a.rule_mitre_id,
-                        mitreTactic: a.rule_mitre_tactic
+                        mitreTactic: a.rule_mitre_tactic,
+                        is_simulated: a.is_simulated
                     };
                     alertObj.killChainPhase = getKillChainPhase(alertObj);
                     return alertObj;
@@ -247,8 +292,10 @@ const AISOCDashboard = () => {
                     critical: data.stats.severity_counts?.Critical || 0,
                     major: data.stats.severity_counts?.High || 0,
                     minor: (data.stats.severity_counts?.Medium || 0) + (data.stats.severity_counts?.Low || 0),
-                    totalEvents: formatNum(data.stats.total_alerts || 0),
-                    threatScenarios: formatNum(data.stats.total_alerts || 0),
+                    unassigned: data.stats.unassigned || 0,
+                    closed: data.stats.closed || 0,
+                    totalEvents: formatNum(data.stats.total_events || 0),
+                    threatScenarios: formatNum(data.stats.threat_scenarios || 0),
                     openAlerts: (data.stats.severity_counts?.Critical || 0) + (data.stats.severity_counts?.High || 0)
                 }));
             }
@@ -278,10 +325,7 @@ const AISOCDashboard = () => {
         }
     };
 
-    const navigateToEvents = (severity) => {
-        setEventFilter(severity);
-        setActiveTab('events');
-    };
+
 
     // 1. First check if we are still verifying the session
     if (authLoading) {
@@ -315,14 +359,14 @@ const AISOCDashboard = () => {
     const navItems = {
         analytics: [
             { id: 'dashboard', label: 'Performance Dashboard', icon: Activity },
-            ...(MODE === 'overlay' ? [{ id: 'events', label: 'Alert Dashboard', icon: Shield }] : []),
+            { id: 'events', label: 'Alert Dashboard', icon: Shield },
         ],
         insights: [
-            ...(MODE === 'overlay' ? [{ id: 'framework', label: 'MITRE Assistant', icon: Bot }] : []),
+            { id: 'framework', label: 'MITRE Assistant', icon: Bot },
         ],
         threats: [
-            ...(MODE === 'standalone' ? [{ id: 'intelligence', label: 'Syslog Intelligence', icon: Search }] : []),
-            ...(MODE === 'overlay' ? [{ id: 'intelligence', label: 'IP Intelligence', icon: Search }] : []),
+            { id: 'intelligence', label: 'IP Intelligence', icon: Globe },
+            { id: 'standalone_intel', label: 'Syslog Intelligence', icon: Search },
         ]
     };
 
@@ -352,11 +396,23 @@ const AISOCDashboard = () => {
 
                 <div className="flex items-center gap-6">
                     <div className="hidden sm:flex items-center gap-4 bg-[#1a1f3a]/50 rounded-full px-4 py-1.5 border border-[#1a1f3a]">
-                        <div className="flex flex-col items-end">
-                            <span className="text-[10px] font-bold text-[#00d4ff] uppercase tracking-wider leading-none">Status</span>
-                            <span className="text-[9px] text-green-400 font-bold uppercase">Neural Link Active</span>
-                        </div>
-                        <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.5)]"></div>
+                        {simulationMode ? (
+                            <div className="flex items-center gap-2">
+                                <div className="w-1.5 h-1.5 bg-[#f97316] rounded-full animate-pulse shadow-[0_0_8px_rgba(249,115,22,0.5)]"></div>
+                                <div className="flex flex-col">
+                                    <span className="text-[9px] font-bold text-[#f97316] uppercase tracking-wider leading-none">AI Simulation Active</span>
+                                    <span className="text-[7px] text-gray-500 uppercase tracking-widest mt-0.5">Last Pulse: {lastRefresh}</span>
+                                </div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="flex flex-col items-end">
+                                    <span className="text-[10px] font-bold text-[#00d4ff] uppercase tracking-wider leading-none">Status</span>
+                                    <span className="text-[9px] text-green-400 font-bold uppercase">Neural Link Active</span>
+                                </div>
+                                <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,0.5)]"></div>
+                            </>
+                        )}
                     </div>
 
                     <div className="flex items-center gap-2 bg-[#1a1f3a] rounded-full px-3 py-1 border border-[#2d3748] relative group/user cursor-pointer">
@@ -535,16 +591,16 @@ const AISOCDashboard = () => {
                                     {/* Top Metrics Row */}
                                     <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
                                         {[
-                                            { label: 'Critical Alerts', count: stats.critical, color: 'text-red-500', bg: 'bg-red-500/10', sev: 'Critical', icon: AlertTriangle },
-                                            { label: 'Major Alerts', count: stats.major, color: 'text-orange-500', bg: 'bg-orange-500/10', sev: 'Major', icon: AlertTriangle },
-                                            { label: 'Minor Alerts', count: stats.minor, color: 'text-yellow-500', bg: 'bg-yellow-500/10', sev: 'Minor', icon: AlertTriangle },
-                                            { label: 'Unassigned', count: stats.unassigned, color: 'text-blue-400', bg: 'bg-blue-400/10', sev: 'All', icon: User },
-                                            { label: 'Closed Cases', count: stats.closed, color: 'text-green-500', bg: 'bg-green-500/10', sev: 'All', icon: Database },
-                                            { label: 'Remediated', count: stats.remediated, color: 'text-purple-500', bg: 'bg-purple-500/10', sev: 'All', icon: Zap }
+                                            { label: 'Critical Alerts', count: stats.critical, color: 'text-red-500', bg: 'bg-red-500/10', sev: 'Critical', status: 'All', icon: AlertTriangle },
+                                            { label: 'Major Alerts', count: stats.major, color: 'text-orange-500', bg: 'bg-orange-500/10', sev: 'Major', status: 'All', icon: AlertTriangle },
+                                            { label: 'Minor Alerts', count: stats.minor, color: 'text-yellow-500', bg: 'bg-yellow-500/10', sev: 'Minor', status: 'All', icon: AlertTriangle },
+                                            { label: 'Unassigned', count: stats.unassigned, color: 'text-blue-400', bg: 'bg-blue-400/10', sev: 'All', status: 'Open', icon: User },
+                                            { label: 'Closed Cases', count: stats.closed, color: 'text-green-500', bg: 'bg-green-500/10', sev: 'All', status: 'Closed', icon: Database },
+                                            { label: 'Remediated', count: stats.remediated, color: 'text-purple-500', bg: 'bg-purple-500/10', sev: 'All', status: 'Closed', icon: Zap }
                                         ].map((card, idx) => (
                                             <div
                                                 key={idx}
-                                                onClick={() => navigateToEvents(card.sev)}
+                                                onClick={() => navigateToEvents(card.sev, card.status)}
                                                 className="p-4 rounded-xl border border-[#1a1f3a] bg-[#0a0e27] hover:border-[#00d4ff]/50 hover:bg-[#00d4ff]/5 transition-all cursor-pointer group shadow-xl flex items-center justify-between"
                                             >
                                                 <div className="flex flex-col justify-center">
@@ -579,11 +635,12 @@ const AISOCDashboard = () => {
 
                                     {/* Intelligence Charts Section */}
                                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                                        {MODE === 'overlay' && (
+                                        {dashboardMode === 'overlay' && (
                                             <>
                                                 <KillChainChart
                                                     data={killChainData}
                                                     onPhaseClick={(phase) => {
+                                                        setEventFilter('All'); // Clear severity when clicking Kill Chain
                                                         setSearchTerm(phase);
                                                         setActiveTab('events');
                                                     }}
@@ -591,7 +648,7 @@ const AISOCDashboard = () => {
                                                 <CveRadar data={radarData} />
                                             </>
                                         )}
-                                        {MODE === 'standalone' && (
+                                        {dashboardMode === 'standalone' && (
                                             <div className="lg:col-span-2 bg-[#0a0e27] rounded-3xl p-8 border border-[#1a1f3a] shadow-2xl h-[400px]">
                                                 <h3 className="text-white font-bold mb-4">LogAI Anomaly Clusters</h3>
                                                 <p className="text-gray-400">Standalone syslog analysis mode active. Showing neural log patterns.</p>
@@ -626,6 +683,14 @@ const AISOCDashboard = () => {
                                                             cx="50%" cy="45%" innerRadius={0} outerRadius={80} dataKey="value" stroke="#0a0e27" strokeWidth={2}
                                                             labelLine={true}
                                                             label={({ name, percent }) => `${name.length > 15 ? name.slice(0, 15) + '...' : name}: ${(percent * 100).toFixed(1)}%`}
+                                                            onClick={(e) => {
+                                                                if (e && e.name) {
+                                                                    setEventFilter('All');
+                                                                    setSearchTerm(e.name);
+                                                                    setActiveTab('events');
+                                                                }
+                                                            }}
+                                                            className="cursor-pointer"
                                                         >
                                                             {(alertTypes.length > 0 ? alertTypes : []).map((entry, index) => (
                                                                 <Cell key={`cell-${index}`} fill={['#60c07c', '#4daaf8', '#ba6fd4', '#7c7fb3', '#24b8ea'][index % 5]} />
@@ -681,6 +746,7 @@ const AISOCDashboard = () => {
                                     <MitreEvents
                                         alerts={alerts}
                                         initialSeverity={eventFilter}
+                                        initialStatus={statusFilter}
                                         initialSearch={searchTerm}
                                         onSearchChange={setSearchTerm}
                                         onAnalyze={analyzeIOC}
@@ -710,6 +776,48 @@ const AISOCDashboard = () => {
                                     className="bg-[#0a0e27] rounded-3xl border border-[#1a1f3a] shadow-2xl p-8 min-h-[600px] overflow-y-auto"
                                 >
                                     <IpInvestigation onAnalyze={analyzeIOC} analysis={analysis} />
+                                </motion.div>
+                            )}
+
+                            {activeTab === 'standalone_intel' && (
+                                <motion.div
+                                    key="standalone_intel"
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 1.05 }}
+                                    className="bg-[#0a0e27] rounded-3xl border border-[#1a1f3a] shadow-2xl p-8 min-h-[600px] overflow-y-auto"
+                                >
+                                    <div className="space-y-6">
+                                        <div className="flex items-center justify-between mb-4">
+                                            <h2 className="text-xl font-bold text-white uppercase tracking-widest flex items-center gap-3">
+                                                <Search className="w-6 h-6 text-[#00d4ff]" />
+                                                Syslog Reality Intelligence
+                                            </h2>
+                                            <div className="px-3 py-1 bg-[#60c07c]/10 border border-[#60c07c]/20 rounded-full">
+                                                <span className="text-[10px] font-bold text-[#60c07c] uppercase">Neural Link Active</span>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                            <div className="bg-[#1a1f3a]/30 p-6 rounded-2xl border border-[#2d3748]">
+                                                <h3 className="text-xs font-bold text-gray-400 mb-4 uppercase tracking-widest">Raw Log Anomaly Detection</h3>
+                                                <div className="h-40 flex items-center justify-center text-gray-500 font-bold italic">
+                                                    Streaming real-time syslog analysis...
+                                                </div>
+                                            </div>
+                                            <div className="bg-[#1a1f3a]/30 p-6 rounded-2xl border border-[#2d3748]">
+                                                <h3 className="text-xs font-bold text-gray-400 mb-4 uppercase tracking-widest">IsolationForest Clusters</h3>
+                                                <div className="space-y-4">
+                                                    <div className="h-2 bg-[#2d3748] rounded-full overflow-hidden">
+                                                        <div className="w-[75%] h-full bg-[#00d4ff]" />
+                                                    </div>
+                                                    <div className="h-2 bg-[#2d3748] rounded-full overflow-hidden">
+                                                        <div className="w-[45%] h-full bg-[#f97316]" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </motion.div>
                             )}
                         </AnimatePresence>

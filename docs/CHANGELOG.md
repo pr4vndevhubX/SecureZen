@@ -2,6 +2,14 @@
 
 All notable changes to the SecureZen project will be documented in this file.
 
+## [1.6.0] - 2026-02-13
+
+### Added
+- **Redis-based Syslog Buffer**: Enhanced ingestion reliability using a `securezen_raw_syslog` queue.
+- **LogAI Deep Integration**: Implemented Drain parsing and Isolation Forest anomaly detection for standalone mode.
+- **Hybrid AI Classification**: Multistage severity assessment (ML + Rules + Gemini Reasoning).
+- **Isolated Syslog Alerts DB**: Standalone mode now uses `data/syslog_alerts.db` for complete data isolation.
+
 ## [1.5.0] - 2026-02-12
 
 ### Added
