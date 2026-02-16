@@ -98,22 +98,24 @@ Choose your product tier and run the corresponding batch file from the **Project
 
 If you need to start individual components manually:
 
-**1. Shared Background Services**
+**1. Standalone Startup (Manual)**
 ```bash
-# Terminal 1: Start the network listener (Port 5140)
-uv run python services/syslog_listener.py
-
-# Terminal 2: Start the LogAI Neural Pipeline (Deep Analysis)
-uv run python services/syslog_preprocessor.py
+cd standalone_app
+# Ingest raw logs
+uv run python features/syslog_analysis/syslog_listener.py
+# Analyze logs (Neural Pipeline)
+uv run python features/syslog_analysis/securezen_neural_pipeline.py
+# Start Backend
+uv run python main.py
 ```
 
-**2. Product Backend Servers**
+**2. SIEM Overlay Startup (Manual)**
 ```bash
-# Option A: Standalone Server
-uv run python core/securezen/syslog/server.py
-
-# Option B: SIEM Overlay Server
-uv run python core/securezen/siem/server.py
+cd siem_overlay
+# Start Webhook
+uv run python features/wazuh_siem/webhook.py
+# Start Backend
+uv run python main.py
 ```
 
 **3. Frontend Dev Server**
@@ -175,4 +177,4 @@ If you see SQLite `database is locked`, ensure multiple services aren't trying t
 ---
 
 **Author**: PRAVEENKUMAR
-**Last Updated**: 2026-02-11
+**Last Updated**: 2026-02-16

@@ -2,6 +2,20 @@
 
 All notable changes to the SecureZen project will be documented in this file.
 
+## [1.7.0] - 2026-02-16
+
+### Added
+- **Detached Application Architecture**: Physical separation of `standalone_app/` and `siem_overlay/` with zero root-level logic.
+- **Concurrent LFS Resolver**: Optimized batch-wise log extraction using `ThreadPoolExecutor`.
+- **Robust Path Detection**: Dynamic `sys.path` injection in all entry points for true application isolation.
+
+### Changed
+- Refactored `start_standalone.bat` and `start_overlay.bat` for new directory structure.
+- Renamed `logai_pipeline.py` to `securezen_neural_pipeline.py` in standalone mode.
+
+### Removed
+- Root-level `core/`, `features/`, and `services/` folders (Full migration to apps).
+
 ## [1.6.0] - 2026-02-13
 
 ### Added

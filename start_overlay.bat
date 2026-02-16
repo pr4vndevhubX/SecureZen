@@ -2,10 +2,10 @@
 echo Starting SecureZen SIEM Overlay Mode...
 
 :: Start Webhook (Layer 1 Ingestion)
-start cmd /k "uv run python features/wazuh_siem/webhook.py"
+start cmd /k "cd siem_overlay && uv run python features/wazuh_siem/webhook.py"
 
 :: Start SIEM Backend (Layer 2 Processing)
-start cmd /k "uv run python server_overlay.py"
+start cmd /k "cd siem_overlay && uv run python main.py"
 
 :: Start Common Dashboard
 cd frontend

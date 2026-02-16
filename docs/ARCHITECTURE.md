@@ -127,17 +127,17 @@ A conversational interface that provides:
 
 SecureZen is structured as a **Multi-App platform**, allowing for clean separation between raw log analysis and SIEM enhancement.
 
-### 🧠 1. Standalone Raw Log Intelligence
-- **Entry Points**: `syslog/server.py` and `syslog/dashboard.py`.
-- **Engine**: **LogAI** Neural Pipeline.
-- **Focus**: Pre-SIEM anomaly detection, log clustering, and pattern analysis.
-- **Deployment**: `start_standalone.bat`.
+### 🛡️ 1. Standalone Raw Log Intelligence
+- **Directory**: `standalone_app/`
+- **Engine**: **SecureZen Neural Engine** (`securezen_neural_pipeline.py`).
+- **Focus**: Real-time syslog anomaly detection and clustering.
+- **Database**: `data/syslog_alerts.db`.
 
-### 🛡️ 2. SIEM Overlay AI SOC
-- **Entry Points**: `siem/server.py` and `siem/dashboard.py`.
-- **Engine**: **CrewAI** Agentic Swarm.
-- **Focus**: Autonomous investigation of SIEM alerts and interactive incident response.
-- **Deployment**: `start_overlay.bat`.
+### 🧠 2. SIEM Overlay AI SOC
+- **Directory**: `siem_overlay/`
+- **Engine**: **CrewAI Agent Swarm** (`crew.py`).
+- **Focus**: Agentic investigation of SIEM alerts and automated response.
+- **Database**: `data/wazuh_alerts.db`.
 
 ### ⚛️ Build-Time Frontend Modularity
 The React dashboard utilizes `VITE_SECUREZEN_MODE` environment variables to toggle UI features at build-time, ensuring that clients only receive the code for their purchased features.

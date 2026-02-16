@@ -68,10 +68,12 @@ cp .env.example .env
 # 5. Start the Product Tier you need:
 
 # OPTION A: Standalone Raw Log Intelligence
-./start_standalone.bat
+cd standalone_app
+../start_standalone.bat
 
 # OPTION B: SIEM Overlay AI SOC
-./start_overlay.bat
+cd siem_overlay
+../start_overlay.bat
 ```
 
 ### Which version to use?
@@ -99,17 +101,13 @@ cp .env.example .env
 └────────────────────────────┬────────────────────────────────────────┘
                              ↓
 ┌─────────────────────────────────────────────────────────────────────┐
-│              LOGAI DEEP ANALYSIS PIPELINE (New)                      │
-│          Preprocessing, Parsing (Drain) & Anomaly Detection           │
-└────────────────────────────┬────────────────────────────────────────┘
-                             ↓
-┌─────────────────────────────────────────────────────────────────────┐
-│                SECUREZEN CORE BACKEND (Port 5000)                    │
-│                 (Modular Architecture: core/securezen)               │
-├─────────────────────────────────────────────────────────────────────┤
-│  Routing & Triage Logic:                                             │
-│  • AI Pipeline Alerts → Autonomous Neural Swarm Investigation       │
-│  • Optional SIEM Connectors (Wazuh) → features/wazuh_siem            │
+│                DETACHED APPLICATION ARCHITECTURE                     │
+│  ├─────────────────────────────────┐ ├───────────────────────────────┤ │
+│  │   [standalone_app/]             │ │    [siem_overlay/]            │ │
+│  │  • syslog_alerts.db             │ │  • wazuh_alerts.db            │ │
+│  │  • Neural Pipeline (LogAI)      │ │  • CrewAI Agent Swarm         │ │
+│  │  • Syslog Ingestion             │ │  • Wazuh Webhook & Tools      │ │
+│  └─────────────────────────────────┘ └───────────────────────────────┘ │
 └────────────────────────────┬────────────────────────────────────────┘
                              ↓
 ┌─────────────────────────────────────────────────────────────────────┐
@@ -185,20 +183,20 @@ Detailed documentation is available in the `docs/` directory:
 
 ---
 
+## 📅 Version 1.7.0 Update (Feb 16, 2026)
+
+### 🚀 Complete Decoupling: Detached Multi-App Architecture
+SecureZen has reached architectural maturity by physically separating into two independent, self-contained applications.
+
+- **Physical Isolation**: Root-level `core/` and `features/` folders have been removed. All logic is now encapsulated within `standalone_app/` and `siem_overlay/`.
+- **Zero-Dependency Imports**: Implemented robust `sys.path` detection across all entry points, allowing each app to resolve its local `utils/`, `services/`, and `tools/` independently.
+- **Concurrent LFS Resolver**: Recreated and optimized `bulk_lfs_resolver.py` with **ThreadPoolExecutor** for high-speed, batch-wise extraction of log datasets from Git LFS pointers.
+- **Unified Startup Optimization**: Refactored `.bat` scripts to handle the new directory traversal and renamed pipelines (`securezen_neural_pipeline.py`).
+- **Database Autonomy**: Hardened the separation between `syslog_alerts.db` and `wazuh_alerts.db`, ensuring strictly zero cross-talk between product tiers.
+
+---
+
 ## 📅 Version 1.6.0 Update (Feb 13, 2026)
-
-### 🛡️ Standalone Syslog Isolation
-SecureZen now features a fully isolated, high-performance architecture for standalone raw log intelligence.
-
-- **Redis-Buffered Ingestion**: Implemented a "Shock Absorber" layer using Redis (`securezen_raw_syslog`) to handle massive log bursts without dropping packets on Port 5140.
-- **LogAI Neural Pipeline**: Integrated deep analysis using:
-    - **Drain Algorithm**: Sophisticated parsing of unstructured logs into reusable templates.
-    - **Isolation Forest**: Unsupervised ML for statistical anomaly detection.
-- **Hybrid Intelligence**: Three-layer classification system:
-    1. **ML Anomaly Core**: Statistical rarity detection.
-    2. **Rule Enrichment**: Deterministic mapping to known security patterns.
-    3. **LLM Reasoning**: Gemini-powered conversational context for high-fidelity alerts.
-- **Isolated Data Persistence**: All standalone alerts are now stored in `data/syslog_alerts.db`, completely separate from SIEM data to prevent cross-contamination.
 
 ---
 
@@ -241,5 +239,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 **Author**: PRAVEENKUMAR / KRYA SOLUTIONS PRIVATE LIMITED
 **Project**: [SecureZen GitHub](https://github.com/pr4vndevhubX/SecureZen)
 
-**Last Updated**: 2026-02-13
-**Version**: 1.6.0
+**Last Updated**: 2026-02-16
+**Version**: 1.7.0
