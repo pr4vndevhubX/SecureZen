@@ -16,22 +16,22 @@ class MitreBackfiller:
         self.db_path = self.storage.db_path
         
     def run(self):
-        print(f"🚀 Starting MITRE Backfill on {self.db_path}")
+        print(f"[START] Starting MITRE Backfill on {self.db_path}")
         
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         
         # 1. Clear existing stats to avoid double counting (optional, but safer for backfill)
-        print("🧹 Clearing existing MITRE stats...")
+        print("? Clearing existing MITRE stats...")
         cursor.execute("DELETE FROM mitre_statistics")
         conn.commit()
         
         # 2. Get all alerts
-        print("📦 Fetching all alerts...")
+        print("? Fetching all alerts...")
         cursor.execute("SELECT id, full_alert FROM alerts")
         rows = cursor.fetchall()
         total = len(rows)
-        print(f"✅ Found {total} alerts to process")
+        print(f"[OK] Found {total} alerts to process")
         
         processed = 0
         mitre_hits = 0
@@ -66,20 +66,20 @@ class MitreBackfiller:
                         mitre_hits += 1
                         
             except Exception as e:
-                print(f"❌ Error processing alert {alert_id}: {e}")
+                print(f"[ERR] Error processing alert {alert_id}: {e}")
                 
             processed += 1
             if processed % 1000 == 0:
-                print(f"⏳ Processed {processed}/{total} ({round(processed/total*100, 1)}%) - Found {mitre_hits} MITRE events")
+                print(f"? Processed {processed}/{total} ({round(processed/total*100, 1)}%) - Found {mitre_hits} MITRE events")
                 
         conn.commit()
         conn.close()
         
         duration = time.time() - start_time
-        print(f"\n✅ Backfill Complete!")
-        print(f"📊 Processed: {total}")
-        print(f"🎯 MITRE Events: {mitre_hits}")
-        print(f"⏱️ Time: {round(duration, 2)}s")
+        print(f"\n[OK] Backfill Complete!")
+        print(f"[STATS] Processed: {total}")
+        print(f"? MITRE Events: {mitre_hits}")
+        print(f"?? Time: {round(duration, 2)}s")
 
     def update_stats(self, cursor, mitre_id, tactic, level):
         level = int(level)

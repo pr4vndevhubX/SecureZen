@@ -99,7 +99,7 @@ class MitreKnowledgeBase:
                 logger.warning(f"Failed to parse technique: {e}")
                 continue
         
-        logger.info(f"✓ Parsed {len(techniques)} MITRE techniques")
+        logger.info(f"[YES] Parsed {len(techniques)} MITRE techniques")
         
         main = [t for t in techniques if not t["is_subtechnique"]]
         subs = [t for t in techniques if t["is_subtechnique"]]
@@ -198,7 +198,7 @@ class KnowledgeBaseManager:
                     logger.info(f"Progress: {total}/{len(documents)}")
 
             logger.info("=" * 60)
-            logger.info(f"✅ SUCCESS: {total} techniques ingested")
+            logger.info(f"[OK] SUCCESS: {total} techniques ingested")
             logger.info("=" * 60)
 
             return {
@@ -250,7 +250,7 @@ class KnowledgeBaseManager:
             with open(output_path, 'w', encoding='utf-8') as f:
                 json.dump(response.json(), f, indent=2)
 
-            logger.info(f"✓ Downloaded to {output_path}")
+            logger.info(f"[YES] Downloaded to {output_path}")
             return str(output_path)
 
         except Exception as e:

@@ -156,17 +156,17 @@ def download_mitre_attack() -> dict:
         
         data = response.json()
         
-        logger.info(f"✓ Downloaded successfully")
+        logger.info(f"[YES] Downloaded successfully")
         logger.info(f"  - Total objects: {len(data.get('objects', []))}")
         logger.info(f"  - Spec version: {data.get('spec_version', 'unknown')}")
         
         return data
         
     except requests.exceptions.RequestException as e:
-        logger.error(f"❌ Failed to download MITRE ATT&CK: {e}")
+        logger.error(f"[ERR] Failed to download MITRE ATT&CK: {e}")
         return None
     except json.JSONDecodeError as e:
-        logger.error(f"❌ Invalid JSON response: {e}")
+        logger.error(f"[ERR] Invalid JSON response: {e}")
         return None
 
 # -------------------------------------------------------------------
@@ -199,12 +199,12 @@ def ingest_to_chromadb(techniques: list) -> bool:
         
         # Test connection
         heartbeat = client.heartbeat()
-        logger.info(f"✓ ChromaDB connection successful (heartbeat: {heartbeat})")
+        logger.info(f"[YES] ChromaDB connection successful (heartbeat: {heartbeat})")
         
         # Load embedding model
         logger.info("Loading embedding model (all-MiniLM-L6-v2)...")
         embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-        logger.info("✓ Embedding model loaded")
+        logger.info("[YES] Embedding model loaded")
         
         # Create collection
         collection_name = "mitre_attack"
@@ -212,7 +212,7 @@ def ingest_to_chromadb(techniques: list) -> bool:
         # Delete old collection if exists
         try:
             client.delete_collection(name=collection_name)
-            logger.info(f"✓ Deleted old '{collection_name}' collection")
+            logger.info(f"[YES] Deleted old '{collection_name}' collection")
         except:
             pass
         
@@ -221,7 +221,7 @@ def ingest_to_chromadb(techniques: list) -> bool:
             name=collection_name,
             metadata={"source": "mitre-attack-official"}
         )
-        logger.info(f"✓ Created collection: {collection_name}")
+        logger.info(f"[YES] Created collection: {collection_name}")
         
         # Batch ingest
         batch_size = 50
@@ -256,11 +256,11 @@ def ingest_to_chromadb(techniques: list) -> bool:
                 logger.info(f"Progress: {total_ingested}/{len(techniques)} techniques")
         
         logger.info("-" * 60)
-        logger.info(f"✓ Ingestion complete: {total_ingested} techniques")
+        logger.info(f"[YES] Ingestion complete: {total_ingested} techniques")
         
         # Verify ingestion
         count = collection.count()
-        logger.info(f"✓ Verification: {count} documents in collection")
+        logger.info(f"[YES] Verification: {count} documents in collection")
         
         # Test semantic search
         logger.info("=" * 60)
@@ -294,7 +294,7 @@ def ingest_to_chromadb(techniques: list) -> bool:
         return True
         
     except Exception as e:
-        logger.error(f"❌ Ingestion failed: {e}")
+        logger.error(f"[ERR] Ingestion failed: {e}")
         logger.exception(e)
         return False
 
@@ -312,7 +312,7 @@ def main():
     # Step 1: Download MITRE ATT&CK
     mitre_data = download_mitre_attack()
     if not mitre_data:
-        logger.error("❌ Failed to download MITRE ATT&CK data")
+        logger.error("[ERR] Failed to download MITRE ATT&CK data")
         sys.exit(1)
     
     # Step 2: Parse techniques
@@ -320,7 +320,7 @@ def main():
     techniques = parser.parse_techniques(mitre_data)
     
     if not techniques:
-        logger.error("❌ No techniques extracted")
+        logger.error("[ERR] No techniques extracted")
         sys.exit(1)
     
     # Step 3: Ingest to ChromaDB
@@ -328,7 +328,7 @@ def main():
     
     if success:
         logger.info("=" * 60)
-        logger.info("✅ MITRE ATT&CK INGESTION SUCCESSFUL")
+        logger.info("[OK] MITRE ATT&CK INGESTION SUCCESSFUL")
         logger.info("=" * 60)
         logger.info(f"Total techniques: {len(techniques)}")
         logger.info(f"Collection: mitre_attack")
@@ -336,7 +336,7 @@ def main():
         logger.info("=" * 60)
     else:
         logger.error("=" * 60)
-        logger.error("❌ MITRE ATT&CK INGESTION FAILED")
+        logger.error("[ERR] MITRE ATT&CK INGESTION FAILED")
         logger.error("=" * 60)
         sys.exit(1)
 

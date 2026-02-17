@@ -77,8 +77,8 @@ class NeuralPreprocessor:
     def run(self):
         """The main loop of the pre-processor"""
         print("="*50)
-        print("🧠 SecureZen Neural Pre-processor Active")
-        print(f"🔄 Reading from Redis: {self.buffer.queue_name}")
+        print("[BRAIN] SecureZen Neural Pre-processor Active")
+        print(f"? Reading from Redis: {self.buffer.queue_name}")
         print("="*50)
 
         while True:
@@ -99,7 +99,7 @@ class NeuralPreprocessor:
             # 4. Filter & Promote
             # Only store in DB if score > 30 (Filters out 90% of noise)
             if threat_score > 30:
-                print(f"🔥 [ALERT DETECTED] Score: {threat_score} | App: {parsed['app_name']} | Host: {parsed['hostname']}")
+                print(f"? [ALERT DETECTED] Score: {threat_score} | App: {parsed['app_name']} | Host: {parsed['hostname']}")
                 
                 # Format for AlertStorage (Wazuh format emulation)
                 simulated_alert = {
@@ -128,4 +128,4 @@ if __name__ == "__main__":
     try:
         preprocessor.run()
     except KeyboardInterrupt:
-        print("\n🛑 Pre-processor shutting down.")
+        print("\n? Pre-processor shutting down.")

@@ -1,0 +1,30 @@
+rules:
+  - id: 1001
+    name: "Sudo Execution"
+    pattern: "sudo:"
+    level: 3
+    description: "Successful or failed sudo command execution detected."
+  
+  - id: 1002
+    name: "SSH Failed Password"
+    pattern: "Failed password for"
+    level: 5
+    description: "Multiple failed SSH login attempts detected."
+
+  - id: 1003
+    name: "Invalid User Login"
+    pattern: "Invalid user"
+    level: 7
+    description: "Attempted login using an invalid username."
+
+  - id: 1004
+    name: "Reverse Shell Attempt"
+    pattern: "/bin/sh|/bin/bash"
+    level: 10
+    description: "Common shell execution patterns detected in logs."
+
+  - id: 1005
+    name: "Connection Refused"
+    pattern: "Connection refused"
+    level: 2
+    description: "External or internal connection attempt was rejected."

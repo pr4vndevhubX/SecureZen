@@ -63,7 +63,7 @@ class LFSResolver:
 
     def run(self):
         """Recursively scan and resolve all LFS pointers concurrently."""
-        print(f"🔍 Scanning for LFS pointers in: {self.target_dir}")
+        print(f"[SEARCH] Scanning for LFS pointers in: {self.target_dir}")
         
         pointers = []
         for root, dirs, files in os.walk(self.target_dir):
@@ -75,10 +75,10 @@ class LFSResolver:
         
         total_pointers = len(pointers)
         if total_pointers == 0:
-            print("✨ No LFS pointers found.")
+            print("? No LFS pointers found.")
             return
 
-        print(f"🚀 Found {total_pointers} pointers. Starting parallel download with {self.max_workers} workers...")
+        print(f"[START] Found {total_pointers} pointers. Starting parallel download with {self.max_workers} workers...")
         
         with ThreadPoolExecutor(max_workers=self.max_workers) as executor:
             future_to_file = {executor.submit(self.resolve_file, fp): fp for fp in pointers}
@@ -89,15 +89,15 @@ class LFSResolver:
                 completed += 1
                 if success:
                     self.resolved_count += 1
-                    print(f"[{completed}/{total_pointers}] ✅ Resolved: {os.path.basename(path)}")
+                    print(f"[{completed}/{total_pointers}] [OK] Resolved: {os.path.basename(path)}")
                 else:
                     self.failed_count += 1
-                    print(f"[{completed}/{total_pointers}] ❌ Failed: {os.path.basename(path)}")
+                    print(f"[{completed}/{total_pointers}] [ERR] Failed: {os.path.basename(path)}")
         
         print("\n" + "="*50)
-        print(f"✨ LFS Resolution Complete")
-        print(f"✅ Resolved: {self.resolved_count}")
-        print(f"❌ Failed: {self.failed_count}")
+        print(f"? LFS Resolution Complete")
+        print(f"[OK] Resolved: {self.resolved_count}")
+        print(f"[ERR] Failed: {self.failed_count}")
         print("="*50)
 
 if __name__ == "__main__":
@@ -112,7 +112,7 @@ if __name__ == "__main__":
     target = next((p for p in possible_roots if os.path.exists(p)), None)
     
     if target:
-        resolver = LFSResolver(target, max_workers=20)
+        resolver = LFSResolver(target, max_workers=50)
         resolver.run()
     else:
-        print(f"❌ Target datasets directory not found. Checked: {possible_roots}")
+        print(f"[ERR] Target datasets directory not found. Checked: {possible_roots}")

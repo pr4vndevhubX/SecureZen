@@ -15,7 +15,7 @@ class ThreatDatabase:
                 self.db_path = config_path
             else:
                 # Fix for path resolution - use absolute path to ensure we hit the right DB
-                self.db_path = os.path.join(PROJECT_ROOT, 'data', 'wazuh_alerts.db')
+                self.db_path = os.path.join(PROJECT_ROOT, 'data', 'syslog_alerts.db')
         else:
             self.db_path = db_path
             
@@ -119,7 +119,7 @@ class ThreatDatabase:
         
         conn.commit()
         conn.close()
-        print(f"✅ ThreatDatabase pointing to {self.db_path}")
+        print(f"[OK] ThreatDatabase pointing to {self.db_path}")
 
     def get_dashboard_stats(self):
         """Get statistics for dashboard from the webhook alerts table"""
@@ -453,14 +453,26 @@ class ThreatDatabase:
             # We use INSERT OR REPLACE to update existing analysis for same IP
             cursor.execute('''
                 INSERT OR REPLACE INTO ip_analysis 
-                (ip_address, threat_level, vt_malicious, vt_total, abuse_confidence, analysis_result, last_seen)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
+                (ip_address, threat_level, vt_malicious, vt_total, vt_reputation, 
+                 abuse_confidence, abuse_total_reports, abuse_country, abuse_isp,
+                 yeti_found, yeti_tags, mitre_techniques, kill_chain_phase, 
+                 recommendation, analysis_result, last_seen)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 data.get('ip_address'),
                 data.get('threat_level', 'ANALYZED'),
                 data.get('vt_malicious', 0),
                 data.get('vt_total', 0),
+                data.get('vt_reputation', 0),
                 data.get('abuse_confidence', 0),
+                data.get('abuse_total_reports', 0),
+                data.get('abuse_country', ''),
+                data.get('abuse_isp', ''),
+                data.get('yeti_found', 0),
+                data.get('yeti_tags', ''),
+                data.get('mitre_techniques', ''),
+                data.get('kill_chain_phase', ''),
+                data.get('recommendation', ''),
                 data.get('full_result', ''),
                 datetime.now().strftime('%Y-%m-%d %H:%M:%S')
             ))

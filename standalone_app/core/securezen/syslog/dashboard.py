@@ -18,7 +18,7 @@ setup_dashboard_page("SecureZen Standalone Raw Log Intelligence")
 db = init_db()
 
 # Page Title
-st.markdown('<div class="main-title">🧠 LogAI Standalone Intelligence</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">[BRAIN] LogAI Standalone Intelligence</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-title">Raw Syslog Anomaly & Pattern Detection</div>', unsafe_allow_html=True)
 
 # Metrics
@@ -34,22 +34,22 @@ with col3:
 st.markdown("---")
 
 # Main Content
-tabs = st.tabs(["🧠 Raw Log Intelligence", "🛡️ Agent Status"])
+tabs = st.tabs(["[BRAIN] Raw Log Intelligence", "?? Agent Status"])
 
 with tabs[0]:
-    st.markdown("### 🧠 LogAI Neural Analysis")
+    st.markdown("### [BRAIN] LogAI Neural Analysis")
     col1, col2 = st.columns(2)
     with col1:
-        st.markdown("#### 🔍 Anomaly Clusters")
+        st.markdown("#### [SEARCH] Anomaly Clusters")
         st.info("LogAI is analyzing raw syslog streams using IsolationForest.")
         clusters = {"Time Jitter": 12, "Auth Failures": 45, "Binary Execution": 8}
         st.bar_chart(clusters)
     with col2:
-         st.markdown("#### 📝 Log Templates (Drain)")
+         st.markdown("#### ? Log Templates (Drain)")
          st.code("Template 1: User <*> logged in from <*>\nTemplate 2: Connection reset by <*> port 22\nTemplate 3: Accepted password for <*> from <*>")
 
 with tabs[1]:
-    st.markdown("### 🛡️ Pipeline Status")
-    st.success("✅ LogAI Pipeline: ACTIVE")
+    st.markdown("### ?? Pipeline Status")
+    st.success("[OK] LogAI Pipeline: ACTIVE")
     st.write("**Active Components:** Preprocessor, Drain Parser, IsolationForest")
     st.caption(f"Last heartbeat: {datetime.now().strftime('%H:%M:%S')}")

@@ -2,6 +2,18 @@
 
 All notable changes to the SecureZen project will be documented in this file.
 
+## [1.8.0] - 2026-02-17
+
+### Added
+- **CrewAI Autonomous enrichment**: Integrated multi-agent enrichment engine into both product tiers.
+- **Automated Syslog Enrichment**: `standalone_app` now triggers CrewAI investigation for external IPs detected in suspicious logs.
+- **Global Character Sanitization**: Implemented automated non-ASCII character removal across the codebase to resolve Windows `charmap` encoding errors.
+
+### Fixed
+- **App Root Resolution**: Fixed recursive path detection for configuration files (`agents.yaml`, `tasks.yaml`) across modular app tiers.
+- **Kickoff Variable Mismatch**: Standardized `ip_addresses` template variable between Crew definitions and YAML configs.
+- **Database Standardization**: Aligned all standalone components to use `syslog_alerts.db` for threat intelligence persistence.
+
 ## [1.7.0] - 2026-02-16
 
 ### Added

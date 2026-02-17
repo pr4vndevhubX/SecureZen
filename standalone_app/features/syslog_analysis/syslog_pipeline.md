@@ -9,11 +9,13 @@ graph LR
     A[Syslog Ingestion] --> B[(Redis Buffer)]
     B --> C[Neural Pre-processing]
     C --> D[(Alert Storage)]
-    D --> E[SecureZen AI SOC]
+    D --> E[CrewAI Enrichment]
+    E --> F[SecureZen AI SOC]
     
     style B fill:#d00,color:#fff
     style C fill:#00d,color:#fff
-    style E fill:#008000,color:#fff
+    style E fill:#00f,color:#fff
+    style F fill:#008000,color:#fff
 ```
 
 ### 1. Syslog Ingestion Layer
@@ -33,15 +35,16 @@ graph LR
     - **Normalization**: Converts raw text into structured JSON.
     - **Enrichment**: Adds GeoIP, Threat Intel (VT/AbuseIPDB), and MITRE Mapping.
     - **Priority Scoring**: Uses AI to determine if the log is a "Non-Event" or a "Critical Threat."
+    - **CrewAI Trigger**: Asynchronously starts autonomous agent investigations for external IPs.
 
 ### 4. Alert Storage (Persistence)
 - **Role**: **Permanent Record**.
-- **Implementation**: Structured SQL (SQLite/PostgreSQL).
-- **Filtering**: Only "High Value" alerts identified by the pre-processor are stored here to prevent database bloat.
+- **Implementation**: Structured SQL (SQLite).
+- **Filtering**: Only "High Value" alerts and enriched findings are stored here.
 
 ### 5. SecureZen AI SOC Dashboard
 - **Role**: **Visual Intelligence**.
-- **Function**: Queries the Alert Storage to display interactive charts, trend analysis, and autonomous investigation results.
+- **Function**: Queries the Alert Storage to display interactive charts, trend analysis, and autonomous investigation results from CrewAI.
 - **Value**: Provides the "Wow" factor with clean, actionable security data.
 
 ---
@@ -56,4 +59,4 @@ graph LR
 | **Triage** | Manual lookup for every IP | Automated AI intelligence on discovery |
 
 ---
-*Created on 2026-02-11 for SecureZen Development Hub.*
+*Updated on 2026-02-17 for SecureZen Development Hub.*

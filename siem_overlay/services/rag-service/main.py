@@ -53,7 +53,7 @@ async def lifespan(app: FastAPI):
 
     # Initialize embedding engine
     embedding_engine = EmbeddingEngine()
-    logger.info("✓ Embedding engine loaded")
+    logger.info("[YES] Embedding engine loaded")
 
     # Connect to ChromaDB
     chromadb_host = os.getenv("RAG_CHROMADB_HOST", "chromadb")
@@ -64,11 +64,11 @@ async def lifespan(app: FastAPI):
         host=chromadb_host,
         port=chromadb_port
     )
-    logger.info(f"✓ Connected to ChromaDB at {chromadb_host}:{chromadb_port}")
+    logger.info(f"[YES] Connected to ChromaDB at {chromadb_host}:{chromadb_port}")
 
     # Initialize knowledge base manager
     kb_manager = KnowledgeBaseManager(vector_store)
-    logger.info("✓ Knowledge base manager ready")
+    logger.info("[YES] Knowledge base manager ready")
 
     logger.info("=" * 60)
     logger.info("RAG Service initialization complete")
@@ -136,7 +136,7 @@ async def health_check():
     }
 
 # -------------------------------------------------------------------
-# ✅ HYBRID RETRIEVAL ENDPOINT (FIXED)
+# [OK] HYBRID RETRIEVAL ENDPOINT (FIXED)
 # -------------------------------------------------------------------
 
 @app.post("/retrieve", response_model=RetrievalResponse)
@@ -171,7 +171,7 @@ async def retrieve_context(request: RetrievalRequest):
         if mitre_match and request.collection == "mitre_attack":
             technique_id = mitre_match.group(0).upper()
             
-            logger.info(f"🎯 EXACT MODE: Looking up MITRE ID '{technique_id}'")
+            logger.info(f"? EXACT MODE: Looking up MITRE ID '{technique_id}'")
             
             try:
                 # Direct ChromaDB lookup by ID
@@ -195,7 +195,7 @@ async def retrieve_context(request: RetrievalRequest):
                             )
                         )
                     
-                    logger.info(f"✓ Found exact match for {technique_id}")
+                    logger.info(f"[YES] Found exact match for {technique_id}")
                     return RetrievalResponse(
                         query=query,
                         results=results,
@@ -211,7 +211,7 @@ async def retrieve_context(request: RetrievalRequest):
         # ================================================================
         # CASE 2: SEMANTIC SEARCH
         # ================================================================
-        logger.info(f"🧠 SEMANTIC MODE: Embedding query and searching...")
+        logger.info(f"[BRAIN] SEMANTIC MODE: Embedding query and searching...")
         
         semantic_results = await vector_store.query(
             collection_name=request.collection,
@@ -229,7 +229,7 @@ async def retrieve_context(request: RetrievalRequest):
             for r in semantic_results
         ]
         
-        logger.info(f"✓ Semantic search returned {len(results)} results")
+        logger.info(f"[YES] Semantic search returned {len(results)} results")
         
         return RetrievalResponse(
             query=query,
@@ -239,7 +239,7 @@ async def retrieve_context(request: RetrievalRequest):
         )
     
     except Exception as e:
-        logger.error(f"❌ Retrieval failed: {e}")
+        logger.error(f"[ERR] Retrieval failed: {e}")
         logger.exception(e)
         raise HTTPException(
             status_code=500,
@@ -344,7 +344,7 @@ async def ingest_mitre_attack():
     Returns:
         Ingestion statistics and status
     """
-    logger.info("📥 MITRE ATT&CK ingestion requested")
+    logger.info("[INPUT] MITRE ATT&CK ingestion requested")
     
     result = await kb_manager.ingest_mitre_attack(
         data_path="data/enterprise-attack.json"
@@ -368,13 +368,13 @@ async def refresh_mitre_attack():
     Returns:
         Refresh statistics
     """
-    logger.info("🔄 MITRE ATT&CK refresh requested")
+    logger.info("? MITRE ATT&CK refresh requested")
     
     try:
         # Delete old collection
         try:
             vector_store.delete_collection("mitre_attack")
-            logger.info("✓ Deleted old MITRE collection")
+            logger.info("[YES] Deleted old MITRE collection")
         except:
             pass
         

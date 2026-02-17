@@ -64,7 +64,7 @@ def ingest_mock_cves():
         if db.insert_cve(cve):
             count += 1
             
-    print(f"✅ Ingested {count} mock CVE entries.")
+    print(f"[OK] Ingested {count} mock CVE entries.")
 
 if __name__ == "__main__":
     ingest_mock_cves()

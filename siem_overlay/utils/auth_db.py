@@ -36,7 +36,7 @@ class UserDatabase:
         
         conn.commit()
         conn.close()
-        print(f"✅ User database initialized at {self.db_path}")
+        print(f"[OK] User database initialized at {self.db_path}")
     
     def create_user(self, email: str, password: str, full_name: str) -> Dict:
         """
@@ -72,7 +72,7 @@ class UserDatabase:
             conn.commit()
             conn.close()
             
-            print(f"✅ User created: {email}")
+            print(f"[OK] User created: {email}")
             
             return {
                 "id": user_id,

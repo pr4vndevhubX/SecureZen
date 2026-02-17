@@ -20,10 +20,10 @@ class OneClassSVMParams(Config):
     https://scikit-learn.org/stable/modules/generated/sklearn.svm.OneClassSVM.html.
 
     :param kernel: Specifies the kernel type to be used in the algorithm, i.e.,
-        ``{‘linear’, ‘poly’, ‘rbf’, ‘sigmoid’, ‘precomputed’}``.
-    :param degree: Degree of the polynomial kernel function (‘poly’).
-    :param gamma: Kernel coefficient for ‘rbf’, ‘poly’ and ‘sigmoid’.
-    :param coef0: Independent term in kernel function. It is only significant in ‘poly’ and ‘sigmoid’.
+        ``{?linear?, ?poly?, ?rbf?, ?sigmoid?, ?precomputed?}``.
+    :param degree: Degree of the polynomial kernel function (?poly?).
+    :param gamma: Kernel coefficient for ?rbf?, ?poly? and ?sigmoid?.
+    :param coef0: Independent term in kernel function. It is only significant in ?poly? and ?sigmoid?.
     :param tol: Tolerance for stopping criterion.
     :param nu: An upper bound on the fraction of training errors and a lower bound of the fraction of support vectors.
     :param shrinking: Whether to use the shrinking heuristic.

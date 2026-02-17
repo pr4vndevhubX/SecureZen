@@ -49,11 +49,11 @@ def main():
     DATASETS_DIR = os.path.abspath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "datasets"))
     
     print("="*60)
-    print("🚀 SecureZen Neural Engine: Bulk Analysis Mode")
+    print("[START] SecureZen Neural Engine: Bulk Analysis Mode")
     print("="*60)
     
     if not os.path.exists(DATASETS_DIR):
-        print(f"❌ Directory '{DATASETS_DIR}' not found. Please ensure datasets are present.")
+        print(f"[ERR] Directory '{DATASETS_DIR}' not found. Please ensure datasets are present.")
         return
 
     # Find all .log files recursively
@@ -64,16 +64,16 @@ def main():
                 log_files.append(os.path.join(root, file))
                 
     total_files = len(log_files)
-    print(f"📦 Found {total_files} log files to process.")
+    print(f"? Found {total_files} log files to process.")
     
     if total_files == 0:
-        print("⚠️ No .log files found to analyze.")
+        print("[WARN] No .log files found to analyze.")
         return
 
     # Initialize Engine
     engine = SecureZenNeuralEngine()
     
-    print(f"\n⚡ Starting Sequential Analysis (Thread-safe for Sqlite)...")
+    print(f"\n? Starting Sequential Analysis (Thread-safe for Sqlite)...")
     
     success_count = 0
     error_count = 0
@@ -91,13 +91,13 @@ def main():
             success_count += 1
             total_processed_logs += count
         else:
-            print(f"\n❌ Failed {rel_path}: {status}")
+            print(f"\n[ERR] Failed {rel_path}: {status}")
             error_count += 1
             
     elapsed = time.time() - start_time
     
     print("\n" + "="*60)
-    print("📊 Analysis Complete")
+    print("[STATS] Analysis Complete")
     print(f"   - Time Elapsed: {elapsed:.2f}s")
     print(f"   - Files Processed: {success_count}")
     print(f"   - Errors: {error_count}")
@@ -105,7 +105,7 @@ def main():
     
     # Test GenAI Summarization
     if engine.llm_client:
-        print("\n🤖 Generating AI Summary of Alerts (Test Mock)...")
+        print("\n? Generating AI Summary of Alerts (Test Mock)...")
         # Creates dummy alerts to test the summarization capabilities
         dummy_alerts = [
             {"rule": {"description": "Failed password for root"}, "data": {"vector_score": 90}},
@@ -114,7 +114,7 @@ def main():
         ]
         summary = engine.generate_summary(dummy_alerts)
         if summary:
-            print(f"\n📋 AI Analyst Summary:\n{summary}\n")
+            print(f"\n? AI Analyst Summary:\n{summary}\n")
     
     print("="*60)
 

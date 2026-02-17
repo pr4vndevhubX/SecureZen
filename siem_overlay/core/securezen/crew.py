@@ -8,12 +8,16 @@ import sys
 # Add app root to path for local imports
 current_dir = os.path.dirname(os.path.abspath(__file__))
 # siem_overlay/core/securezen/crew.py -> siem_overlay
-app_root = os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))
+app_root = os.path.dirname(os.path.dirname(current_dir))
 if app_root not in sys.path:
     sys.path.insert(0, app_root)
 
 #to generaet pdf
 from utils.pdf_generator import generate_pdf_report
+from crewai import Agent, Crew, Process, Task, LLM
+from crewai.project import CrewBase, agent, crew, task
+from dotenv import load_dotenv
+import re
 
 # Import tools
 from tools.virustotal_tool import VirusTotalTool
@@ -46,8 +50,8 @@ llm = LLM(
 class IPIntelligenceCrew:
     """Multi-Source IP Threat Intelligence Analysis Crew"""
     
-    agents_config = 'config/agents.yaml'
-    tasks_config = 'config/tasks.yaml'
+    agents_config = os.path.join(app_root, 'config', 'agents.yaml')
+    tasks_config = os.path.join(app_root, 'config', 'tasks.yaml')
     
     # ===== AGENTS =====
     
@@ -258,19 +262,82 @@ class IPIntelligenceCrew:
             cache=True
         )
 
+    def run_and_store(self, ioc: str):
+        """Invoke crew and store results in DB"""
+        print(f"[START] Starting CrewAI enrichment for IOC: {ioc}")
+        try:
+            # We import here to avoid circular dependencies if any
+            from utils.database import ThreatDatabase
+            db = ThreatDatabase()
+            
+            # Execute crew
+            # results = self.crew().kickoff(inputs={'ioc': ioc}) # Replaced with kickoff for older versions or inputs for newer
+            # For CrewAI 0.x/1.x flow:
+            result = self.crew().kickoff(inputs={'ioc': ioc})
+            
+            # Extract data from CrewOutput
+            raw_output = str(result)
+            
+            # Extract basic metrics using regex as fallback
+            vt_malicious = 0
+            vt_total = 0
+            abuse_score = 0
+            threat_level = "ANALYZED"
+            
+            # Match VirusTotal: X/Y
+            vt_match = re.search(r'VirusTotal: (\d+)/(\d+)', raw_output, re.IGNORECASE)
+            if vt_match:
+                vt_malicious = int(vt_match.group(1))
+                vt_total = int(vt_match.group(2))
+            
+            # Match AbuseIPDB: X%
+            abuse_match = re.search(r'Abuse confidence: (\d+)%', raw_output, re.IGNORECASE)
+            if abuse_match:
+                abuse_score = int(abuse_match.group(1))
+            
+            # Match Priority/Severity
+            if "CRITICAL" in raw_output.upper(): threat_level = "CRITICAL"
+            elif "HIGH" in raw_output.upper(): threat_level = "HIGH"
+            elif "MEDIUM" in raw_output.upper(): threat_level = "MEDIUM"
+            elif "LOW" in raw_output.upper(): threat_level = "LOW"
+            
+            # Recommendation
+            rec_match = re.search(r'Recommendation: (.*)', raw_output, re.IGNORECASE)
+            recommendation = rec_match.group(1) if rec_match else "Follow SOC standard operating procedures."
+            
+            data = {
+                'ip_address': ioc,
+                'threat_level': threat_level,
+                'vt_malicious': vt_malicious,
+                'vt_total': vt_total,
+                'abuse_confidence': abuse_score,
+                'recommendation': recommendation,
+                'full_result': raw_output
+            }
+            
+            db.insert_ip_analysis(data)
+            print(f"Enrichment complete for {ioc} | Result: {threat_level}")
+            return True
+            
+        except Exception as e:
+            print(f"Error during enrichment for {ioc}: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
+
 
 # ===== TEST =====
 if __name__ == "__main__":
-    print("🏗️  Building IP Intelligence Crew...\n")
+    print("Building IP Intelligence Crew...\n")
     
     try:
         crew_instance = IPIntelligenceCrew()
         my_crew = crew_instance.crew()
-        print(f"✅ Crew initialized successfully!")
+        print(f"Crew initialized successfully!")
         print(f"   Agents: {len(my_crew.agents)}")
         print(f"   Tasks: {len(my_crew.tasks)}")
         # Remove this line - PDF is generated after crew runs, not here
         # pdf_filename = generate_pdf_report()
         
     except Exception as e:
-        print(f"❌ Error: {e}")
+        print(f"Error: {e}")

@@ -28,7 +28,7 @@ def clean_mitre_jsx(filepath):
     # Actually, MitreEvents local search still uses Search icon.
     
     # Just ensure no artifacts are left
-    content = content.replace('鼓数据鼓', '') # My own tracking string
+    content = content.replace('????', '') # My own tracking string
     
     with open(filepath, 'w', encoding='utf-8', newline='\n') as f:
         f.write(content)
@@ -37,4 +37,4 @@ def clean_mitre_jsx(filepath):
 root = r'c:\Users\psuresh\OneDrive - KRYA SOLUTIONS PRIVATE LIMITED\Desktop\KYD\Agentic-ai-02\IP-alone-Crewai\ip-intel-crewai'
 clean_app_jsx(os.path.join(root, 'frontend', 'src', 'App.jsx'))
 clean_mitre_jsx(os.path.join(root, 'frontend', 'src', 'components', 'MitreEvents.jsx'))
-鼓数据鼓
+????

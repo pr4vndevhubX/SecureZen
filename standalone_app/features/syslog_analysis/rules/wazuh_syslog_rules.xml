@@ -1,0 +1,119 @@
+<!--
+  -  Syslog rules
+  -  Author: Daniel Cid.
+  -  Updated by Wazuh, Inc.
+  -  Copyright (C) 2015, Wazuh Inc.
+  -  Copyright (C) 2009 Trend Micro Inc.
+  -  This program is a free software; you can redistribute it and/or modify it under the terms of GPLv2.
+-->
+
+<!-- Default variables for the SYSLOG rules. -->
+<var name="BAD_WORDS">core_dumped|failure|error|attack| bad |illegal |denied|refused|unauthorized|fatal|failed|Segmentation Fault|Corrupted</var>
+
+<!-- Syslog errors. -->
+<group name="syslog,errors,">
+  <rule id="1001" level="2">
+    <match>^Couldn't open /etc/securetty</match>
+    <description>File missing. Root access unrestricted.</description>
+    <group>pci_dss_10.2.4,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="1002" level="2">
+    <match>$BAD_WORDS</match>
+    <description>Unknown problem somewhere in the system.</description>
+    <group>gpg13_4.3,</group>
+  </rule>
+
+  <rule id="1003" level="13" maxsize="1025" noalert="1">
+    <description>Non standard syslog message (size too large).</description>
+    <mitre>
+      <id>T1499</id>
+    </mitre>
+    <group>gpg13_4.3,</group>
+  </rule>
+
+  <rule id="1004" level="5">
+    <match>^exiting on signal</match>
+    <description>Syslogd exiting (logging stopped).</description>
+    <group>pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="1005" level="5">
+    <program_name>syslogd</program_name>
+    <match>^restart</match>
+    <description>Syslogd restarted.</description>
+    <group>pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="1006" level="5">
+    <regex>^syslogd \S+ restart</regex>
+    <description>Syslogd restarted.</description>
+    <group>pci_dss_10.6.1,gpg13_10.1,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="1007" level="7">
+    <match>file system full|No space left on device</match>
+    <description>File system full.</description>
+    <group>low_diskspace,pci_dss_10.6.1,gpg13_4.1,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="1008" level="5">
+    <match>killed by SIGTERM</match>
+    <description>Process exiting (killed).</description>
+    <group>service_availability,pci_dss_10.6.1,gpg13_4.3,gpg13_4.14,gdpr_IV_35.7.d,hipaa_164.312.b,nist_800_53_AU.6,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="1009" level="0">
+    <if_sid>1002</if_sid>
+    <match>terminated without error|can't verify hostname: getaddrinfo|</match>
+    <match>PPM exceeds tolerance</match>
+    <description>Ignoring known false positives on rule 1002.</description>
+  </rule>
+
+  <rule id="1010" level="5">
+    <match>segfault at </match>
+    <description>Process segfaulted.</description>
+    <group>service_availability,gdpr_IV_35.7.d,</group>
+  </rule>
+</group>
+
+<!-- Access control messages -->
+<group name="syslog,access_control,">
+  <rule id="2501" level="5">
+    <match>FAILED LOGIN |authentication failure|</match>
+    <match>Authentication failed for|invalid password for|</match>
+    <match>LOGIN FAILURE|auth failure: |authentication error|</match>
+    <match>authinternal failed|Failed to authorize|</match>
+    <match>Wrong password given for|login failed|Auth: Login incorrect|</match>
+    <match>Failed to authenticate user</match>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+    <description>syslog: User authentication failure.</description>
+  </rule>
+
+  <rule id="2502" level="10">
+    <match>more authentication failures;|REPEATED login failures</match>
+    <description>syslog: User missed the password more than one time</description>
+    <mitre>
+      <id>T1110</id>
+    </mitre>
+    <group>authentication_failed,pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="2504" level="9">
+    <match>ILLEGAL ROOT LOGIN|ROOT LOGIN REFUSED</match>
+    <description>syslog: Illegal root login.</description>
+    <mitre>
+      <id>T1548.003</id>
+    </mitre>
+    <group>invalid_login,pci_dss_10.2.4,pci_dss_10.2.5,pci_dss_10.2.2,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,nist_800_53_AC.6,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+
+  <rule id="5401" level="5">
+    <match>incorrect password attempt</match>
+    <description>Failed attempt to run sudo.</description>
+    <mitre>
+      <id>T1548.003</id>
+    </mitre>
+    <group>pci_dss_10.2.4,pci_dss_10.2.5,gpg13_7.8,gdpr_IV_35.7.d,gdpr_IV_32.2,hipaa_164.312.b,nist_800_53_AU.14,nist_800_53_AC.7,tsc_CC6.1,tsc_CC6.8,tsc_CC7.2,tsc_CC7.3,</group>
+  </rule>
+</group>

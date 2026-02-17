@@ -26,7 +26,7 @@ class DbScanParams(Config):
     :param metric: The metric to use when calculating distance between instances in a feature array.
     :param metric_params: Additional keyword arguments for the metric function.
     :param algorithm: The algorithm to be used by the NearestNeighbors module to compute pointwise
-        distances and find nearest neighbors, i.e., ``{‘auto’, ‘ball_tree’, ‘kd_tree’, ‘brute’}``.
+        distances and find nearest neighbors, i.e., ``{?auto?, ?ball_tree?, ?kd_tree?, ?brute?}``.
     :param leaf_size: Leaf size passed to BallTree or cKDTree.
     :param p: The power of the Minkowski metric to be used to calculate distance between points.
     :param n_jobs: The number of parallel jobs to run.

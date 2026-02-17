@@ -52,7 +52,7 @@ async def trigger_automated_analysis(alert: dict):
         is_suspicious = any(kw in content for kw in suspicious_keywords)
         
         if not is_suspicious:
-            print(f"ℹ️ Alert level {alert.get('rule',{}).get('level')} received, but no highly suspicious patterns detected. Skipping automated analysis.")
+            print(f"?? Alert level {alert.get('rule',{}).get('level')} received, but no highly suspicious patterns detected. Skipping automated analysis.")
             return
 
         # 2. Extract potential IOCs
@@ -81,7 +81,7 @@ async def trigger_automated_analysis(alert: dict):
         # 3. Trigger analysis for unique suspicious IPs
         unique_ips = list(set(suspicious_ips))
         if unique_ips:
-            print(f"🧠 Automated Analysis Triggered for suspicious alert: {unique_ips}")
+            print(f"[BRAIN] Automated Analysis Triggered for suspicious alert: {unique_ips}")
             async with httpx.AsyncClient() as client:
                 for target_ioc in unique_ips:
                     try:
@@ -91,12 +91,12 @@ async def trigger_automated_analysis(alert: dict):
                             timeout=60.0
                         )
                     except Exception as e:
-                        print(f"⚠️ Failed to trigger analysis for {target_ioc}: {e}")
+                        print(f"[WARN] Failed to trigger analysis for {target_ioc}: {e}")
         else:
-            print(f"ℹ️ No external IOCs found for suspicious level {alert.get('rule',{}).get('level')} alert")
+            print(f"?? No external IOCs found for suspicious level {alert.get('rule',{}).get('level')} alert")
 
     except Exception as e:
-        print(f"❌ Error in automated analysis trigger: {e}")
+        print(f"[ERR] Error in automated analysis trigger: {e}")
 
 @app.post("/loghook")
 async def loghook(request: Request, background_tasks: BackgroundTasks):
@@ -105,9 +105,9 @@ async def loghook(request: Request, background_tasks: BackgroundTasks):
     Receives both single alerts and batch alerts
     """
     try:
-        # 1️⃣ Authenticate Wazuh
+        # 1?? Authenticate Wazuh
         if request.headers.get("X-API-Key") != API_KEY:
-            print("❌ Unauthorized request")
+            print("[ERR] Unauthorized request")
             return JSONResponse(
                 status_code=401,
                 content={"status": "unauthorized"}
@@ -116,7 +116,7 @@ async def loghook(request: Request, background_tasks: BackgroundTasks):
         payload = await request.json()
 
         # =========================
-        # 🔁 HANDLE BATCH ALERTS
+        # ? HANDLE BATCH ALERTS
         # =========================
         if isinstance(payload, list):
             stored_count = 0
@@ -139,19 +139,19 @@ async def loghook(request: Request, background_tasks: BackgroundTasks):
                     alert_storage.store_alert(alert)
                     stored_count += 1
                     
-                    # 🧘 Automated analysis for high level alerts
+                    # ? Automated analysis for high level alerts
                     if rule_level > 7:
                         background_tasks.add_task(trigger_automated_analysis, alert)
 
                 except Exception as alert_error:
-                    print(f"⚠️ Error processing individual alert: {alert_error}")
+                    print(f"[WARN] Error processing individual alert: {alert_error}")
                     print(f"Alert data: {alert}")
                     continue
 
             stats['total_received'] += len(payload)
             stats['stored'] += stored_count
 
-            print(f"📦 Batch received | Total: {len(payload)} | Stored: {stored_count}")
+            print(f"? Batch received | Total: {len(payload)} | Stored: {stored_count}")
 
             return {
                 "status": "stored",
@@ -160,7 +160,7 @@ async def loghook(request: Request, background_tasks: BackgroundTasks):
             }
 
         # =========================
-        # 🔔 HANDLE SINGLE ALERT
+        # ? HANDLE SINGLE ALERT
         # =========================
         alert = payload.get("alert", payload)
         
@@ -173,7 +173,7 @@ async def loghook(request: Request, background_tasks: BackgroundTasks):
         else:
             rule_level = int(rule_level)
 
-        print(f"📩 Received alert | Level: {rule_level}")
+        print(f"? Received alert | Level: {rule_level}")
 
         stats['total_received'] += 1
 
@@ -184,11 +184,11 @@ async def loghook(request: Request, background_tasks: BackgroundTasks):
         alert_id = alert_storage.store_alert(alert)
         stats['stored'] += 1
 
-        # 🧠 Trigger automated analysis for high level alerts
+        # [BRAIN] Trigger automated analysis for high level alerts
         if rule_level > 7:
             background_tasks.add_task(trigger_automated_analysis, alert)
 
-        print(f"✅ Stored alert ID: {alert_id}")
+        print(f"[OK] Stored alert ID: {alert_id}")
 
         return {
             "status": "stored",
@@ -201,8 +201,8 @@ async def loghook(request: Request, background_tasks: BackgroundTasks):
         error_msg = str(e) if str(e) else repr(e)
         error_trace = traceback.format_exc()
         
-        print(f"❌ Error: {error_msg}")
-        print(f"📋 Full traceback:\n{error_trace}")
+        print(f"[ERR] Error: {error_msg}")
+        print(f"? Full traceback:\n{error_trace}")
         
         return JSONResponse(
             status_code=500,
@@ -233,7 +233,7 @@ async def search_alerts(
         JSON with matching alerts and metadata
     """
     try:
-        print(f"🔍 Search request: IP={ip}, days={days}, min_level={min_level}")
+        print(f"[SEARCH] Search request: IP={ip}, days={days}, min_level={min_level}")
         
         # Query database using fast IP search
         matching_alerts = alert_storage.search_alerts_by_ip(ip, days=days)
@@ -258,7 +258,7 @@ async def search_alerts(
                 }
                 filtered_alerts.append(formatted_alert)
         
-        print(f"✅ Found {len(filtered_alerts)} alerts matching criteria")
+        print(f"[OK] Found {len(filtered_alerts)} alerts matching criteria")
         
         return {
             "alerts": filtered_alerts,
@@ -272,7 +272,7 @@ async def search_alerts(
         }
         
     except Exception as e:
-        print(f"❌ Search error: {e}")
+        print(f"[ERR] Search error: {e}")
         traceback.print_exc()
         
         return JSONResponse(
@@ -369,15 +369,15 @@ async def root():
 
 if __name__ == "__main__":
     print("=" * 70)
-    print("🚀 Starting Wazuh Alert Receiver")
+    print("[START] Starting Wazuh Alert Receiver")
     print("=" * 70)
-    print(f"📡 Webhook endpoint: http://0.0.0.0:3030/loghook")
-    print(f"🔍 Search endpoint: http://0.0.0.0:3030/alerts/search")
-    print(f"📊 Stats endpoint: http://0.0.0.0:3030/stats")
-    print(f"💚 Health check: http://0.0.0.0:3030/health")
-    print(f"📚 API docs: http://0.0.0.0:3030/docs")
+    print(f"[SIGNAL] Webhook endpoint: http://0.0.0.0:3030/loghook")
+    print(f"[SEARCH] Search endpoint: http://0.0.0.0:3030/alerts/search")
+    print(f"[STATS] Stats endpoint: http://0.0.0.0:3030/stats")
+    print(f"? Health check: http://0.0.0.0:3030/health")
+    print(f"? API docs: http://0.0.0.0:3030/docs")
     print("=" * 70)
-    print(f"🔑 API Key required: {API_KEY[:10]}...")
+    print(f"? API Key required: {API_KEY[:10]}...")
     print("=" * 70 + "\n")
     
     uvicorn.run(app, host="0.0.0.0", port=3030)

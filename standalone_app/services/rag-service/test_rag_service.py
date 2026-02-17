@@ -32,8 +32,8 @@ async def test_embedding_engine():
     text = "SSH brute force attack from external IP"
     embedding = engine.embed_text(text)
 
-    logger.info(f"✓ Generated embedding for: '{text}'")
-    logger.info(f"✓ Embedding dimensions: {len(embedding)}")
+    logger.info(f"[YES] Generated embedding for: '{text}'")
+    logger.info(f"[YES] Embedding dimensions: {len(embedding)}")
     assert len(embedding) == 384, "Embedding should be 384 dimensions"
 
     # Test batch embedding
@@ -44,8 +44,8 @@ async def test_embedding_engine():
     ]
     embeddings = engine.embed_batch(texts)
 
-    logger.info(f"✓ Generated {len(embeddings)} batch embeddings")
-    logger.info(f"✓ Batch shape: {embeddings.shape}")
+    logger.info(f"[YES] Generated {len(embeddings)} batch embeddings")
+    logger.info(f"[YES] Batch shape: {embeddings.shape}")
     assert embeddings.shape == (3, 384), "Batch embeddings shape incorrect"
 
     # Test similarity
@@ -53,10 +53,10 @@ async def test_embedding_engine():
         "SSH brute force attack",
         "Multiple failed SSH login attempts"
     )
-    logger.info(f"✓ Similarity score: {sim:.3f}")
+    logger.info(f"[YES] Similarity score: {sim:.3f}")
     assert sim > 0.5, "Similar texts should have high similarity"
 
-    logger.info("✓ Embedding Engine: PASSED\n")
+    logger.info("[YES] Embedding Engine: PASSED\n")
 
 
 async def test_vector_store():
@@ -71,16 +71,16 @@ async def test_vector_store():
 
     # Test connection
     connected = store.is_connected()
-    logger.info(f"✓ ChromaDB connected: {connected}")
+    logger.info(f"[YES] ChromaDB connected: {connected}")
 
     if not connected:
-        logger.error("✗ ChromaDB not running. Start with: docker run -p 8000:8000 chromadb/chroma")
+        logger.error("? ChromaDB not running. Start with: docker run -p 8000:8000 chromadb/chroma")
         return False
 
     # Create test collection
     collection_name = "test_collection"
     success = store.create_collection(collection_name)
-    logger.info(f"✓ Created collection: {collection_name}")
+    logger.info(f"[YES] Created collection: {collection_name}")
 
     # Add test documents
     documents = [
@@ -103,7 +103,7 @@ async def test_vector_store():
         metadatas=metadatas,
         ids=ids
     )
-    logger.info(f"✓ Added {len(documents)} documents")
+    logger.info(f"[YES] Added {len(documents)} documents")
 
     # Test semantic search
     results = await store.query(
@@ -113,7 +113,7 @@ async def test_vector_store():
         min_similarity=0.0
     )
 
-    logger.info(f"✓ Query results: {len(results)} documents")
+    logger.info(f"[YES] Query results: {len(results)} documents")
     for i, result in enumerate(results):
         logger.info(f"  {i+1}. {result['metadata'].get('technique_id')} - Similarity: {result['similarity_score']:.3f}")
 
@@ -122,13 +122,13 @@ async def test_vector_store():
 
     # Get collection stats
     stats = store.get_collection_stats(collection_name)
-    logger.info(f"✓ Collection stats: {stats['count']} documents")
+    logger.info(f"[YES] Collection stats: {stats['count']} documents")
 
     # Cleanup
     store.delete_collection(collection_name)
-    logger.info(f"✓ Deleted test collection")
+    logger.info(f"[YES] Deleted test collection")
 
-    logger.info("✓ Vector Store: PASSED\n")
+    logger.info("[YES] Vector Store: PASSED\n")
     return True
 
 
@@ -140,7 +140,7 @@ async def test_mitre_ingestion():
 
     response = input("Download and ingest MITRE ATT&CK (~10MB, 3000+ techniques)? (y/n): ")
     if response.lower() != 'y':
-        logger.info("⊘ Skipping MITRE ingestion (user choice)\n")
+        logger.info("? Skipping MITRE ingestion (user choice)\n")
         return
 
     engine = EmbeddingEngine()
@@ -152,7 +152,7 @@ async def test_mitre_ingestion():
     result = await kb_manager.ingest_mitre_attack()
 
     if result['status'] == 'success':
-        logger.info(f"✓ Ingested {result['techniques_ingested']} MITRE techniques")
+        logger.info(f"[YES] Ingested {result['techniques_ingested']} MITRE techniques")
 
         # Test query
         logger.info("\nTesting semantic search on MITRE collection...")
@@ -163,14 +163,14 @@ async def test_mitre_ingestion():
             min_similarity=0.6
         )
 
-        logger.info(f"✓ Found {len(results)} relevant techniques:")
+        logger.info(f"[YES] Found {len(results)} relevant techniques:")
         for i, result in enumerate(results):
             logger.info(f"  {i+1}. {result['metadata'].get('name')} ({result['metadata'].get('technique_id')})")
             logger.info(f"     Similarity: {result['similarity_score']:.3f}")
 
-        logger.info("✓ MITRE Ingestion: PASSED\n")
+        logger.info("[YES] MITRE Ingestion: PASSED\n")
     else:
-        logger.error(f"✗ MITRE Ingestion failed: {result['message']}")
+        logger.error(f"? MITRE Ingestion failed: {result['message']}")
 
 
 async def main():
@@ -191,11 +191,11 @@ async def main():
             await test_mitre_ingestion()
 
         logger.info("="*60)
-        logger.info("ALL TESTS PASSED ✓")
+        logger.info("ALL TESTS PASSED [YES]")
         logger.info("="*60)
 
     except Exception as e:
-        logger.error(f"\n✗ TEST FAILED: {e}")
+        logger.error(f"\n? TEST FAILED: {e}")
         logger.exception(e)
 
 

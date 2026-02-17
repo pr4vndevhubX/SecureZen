@@ -23,7 +23,7 @@ class OrdinalEncodingParams(Config):
     :param categories: Categories (unique values) per feature.
     :param dtype: Desired dtype of output.
     :param handle_unknown: Specifies the way unknown categories are handled during transform.
-    :param unknown_value: When the parameter handle_unknown is set to ‘use_encoded_value’,
+    :param unknown_value: When the parameter handle_unknown is set to ?use_encoded_value?,
         this parameter is required and will set the encoded value of unknown categories.
     """
     categories: str = "auto"

@@ -11,5 +11,5 @@ if project_root not in sys.path:
 from core.securezen.siem.server import app
 
 if __name__ == "__main__":
-    print("🚀 [SecureZen] Starting SIEM Overlay Mode...")
+    print("[START] [SecureZen] Starting SIEM Overlay Mode...")
     uvicorn.run(app, host="0.0.0.0", port=5000)

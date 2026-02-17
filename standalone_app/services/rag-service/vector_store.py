@@ -46,7 +46,7 @@ class VectorStore:
                     settings=Settings(anonymized_telemetry=False)
                 )
                 self.client.heartbeat()
-                logger.info(f"✅ Connected to ChromaDB at {self.host}:{self.port}")
+                logger.info(f"[OK] Connected to ChromaDB at {self.host}:{self.port}")
             except Exception as e:
                 logger.warning(f"ChromaDB not ready: {e}")
                 return None
@@ -188,7 +188,7 @@ class VectorStore:
             return []
 
     # ------------------------------------------------------------------
-    # ✅ EXACT METADATA LOOKUP (MITRE IDs)
+    # [OK] EXACT METADATA LOOKUP (MITRE IDs)
     # ------------------------------------------------------------------
 
     def get_by_metadata(

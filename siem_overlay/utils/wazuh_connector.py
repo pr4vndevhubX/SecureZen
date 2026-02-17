@@ -15,7 +15,7 @@ class WazuhConnector:
     
     def load_csv_alerts(self, csv_path):
         """Load Wazuh alerts from CSV file"""
-        print(f"📂 Loading alerts from CSV: {csv_path}")
+        print(f"[FILE] Loading alerts from CSV: {csv_path}")
         
         try:
             df = pd.read_csv(csv_path)
@@ -51,11 +51,11 @@ class WazuhConnector:
                 if self.db.insert_wazuh_alert(alert_data):
                     alerts_loaded += 1
             
-            print(f"✅ Loaded {alerts_loaded} alerts from CSV")
+            print(f"[OK] Loaded {alerts_loaded} alerts from CSV")
             return alerts_loaded
             
         except Exception as e:
-            print(f"❌ Error loading CSV: {e}")
+            print(f"[ERR] Error loading CSV: {e}")
             import traceback
             traceback.print_exc()
             return 0

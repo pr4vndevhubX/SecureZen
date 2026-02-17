@@ -48,7 +48,7 @@ class SecureZenNeuralEngine:
         self.buffer = SyslogBuffer()
         self.storage = AlertStorage()
         
-        print("🧠 Initializing SecureZen Neural Engine...")
+        print("[BRAIN] Initializing SecureZen Neural Engine...")
         
         # 1. Preprocessing Engine
         self.preprocessor_config = PreprocessorConfig(
@@ -84,11 +84,11 @@ class SecureZenNeuralEngine:
                     base_url=os.getenv("OPENAI_API_BASE"),
                     api_key=os.getenv("OPENAI_API_KEY")
                 )
-                print("🤖 GenAI Module: Online (Groq/OpenAI)")
+                print("? GenAI Module: Online (Groq/OpenAI)")
             except Exception as e:
-                print(f"⚠️ GenAI Module Initialization Failed: {e}")
+                print(f"[WARN] GenAI Module Initialization Failed: {e}")
         
-        print("✅ Neural Engine Online.")
+        print("[OK] Neural Engine Online.")
 
     def preprocess_data(self, raw_logs: pd.Series):
         """Stage 1: Clean and normalize raw log data."""
@@ -101,7 +101,7 @@ class SecureZenNeuralEngine:
             parsed_df = self.parser.fit_parse(cleaned_logs)
             return parsed_df
         except Exception as e:
-            print(f"⚠️ Feature Extraction Warning: {e}")
+            print(f"[WARN] Feature Extraction Warning: {e}")
             # Return basic DF if parsing fails
             return pd.DataFrame({'logline': cleaned_logs})
 
@@ -118,7 +118,7 @@ class SecureZenNeuralEngine:
             vectors = self.vectorizer.transform(parsed_df['logline'])
             return vectors
         except Exception as e:
-            print(f"⚠️ Vectorization Warning: {e}")
+            print(f"[WARN] Vectorization Warning: {e}")
             return None
 
     def cluster_logs(self, vectors):
@@ -130,7 +130,7 @@ class SecureZenNeuralEngine:
             clusters = self.clustering.predict(vectors)
             return clusters
         except Exception as e:
-            print(f"⚠️ Clustering Warning: {e}")
+            print(f"[WARN] Clustering Warning: {e}")
             return None
 
     def hybrid_classify_llm(self, log_text: str):
@@ -165,7 +165,7 @@ class SecureZenNeuralEngine:
                 
             return json.loads(content)
         except Exception as e:
-            print(f"⚠️ GenAI Classification Failed: {e}")
+            print(f"[WARN] GenAI Classification Failed: {e}")
             return None
 
     def generate_summary(self, alerts: list):
@@ -194,7 +194,7 @@ class SecureZenNeuralEngine:
             
             return response.choices[0].message.content
         except Exception as e:
-            print(f"⚠️ GenAI Summarization Failed: {e}")
+            print(f"[WARN] GenAI Summarization Failed: {e}")
             return None
 
     def analyze_anomalies(self, parsed_df: pd.DataFrame, clusters=None):
@@ -351,15 +351,15 @@ class SecureZenNeuralEngine:
                 # Publish to 'neural_alerts' channel
                 self.buffer.client.publish('neural_alerts', json.dumps(alert))
         except Exception as e:
-            print(f"⚠️ Redis Publish Error: {e}")
+            print(f"[WARN] Redis Publish Error: {e}")
 
-        print(f"🚀 [NEURAL ALERT] Score: {score} | Cluster: {cluster_id} | Type: {description[:50]}...")
+        print(f"[START] [NEURAL ALERT] Score: {score} | Cluster: {cluster_id} | Type: {description[:50]}...")
 
     def run_stream(self):
         """Starts the real-time processing loop."""
         print("="*50)
-        print("🛡️  SecureZen Neural Engine: Active Monitoring")
-        print(f"🔄 Consuming raw syslog from Redis: syslog:raw")
+        print("??  SecureZen Neural Engine: Active Monitoring")
+        print(f"? Consuming raw syslog from Redis: syslog:raw")
         print("="*50)
         
         batch = []
@@ -394,4 +394,4 @@ if __name__ == "__main__":
     try:
         engine.run_stream()
     except KeyboardInterrupt:
-        print("\n🛑 SecureZen Neural Engine shutting down.")
+        print("\n? SecureZen Neural Engine shutting down.")

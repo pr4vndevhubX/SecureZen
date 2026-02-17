@@ -323,13 +323,13 @@ Now provide your intelligent forensic analysis:
             LIMIT 20
         """
         
-        print(f"\n🔍 DEBUG - Generated SQL:\n{sql}\n")
+        print(f"\n[SEARCH] DEBUG - Generated SQL:\n{sql}\n")
         
         try:
             cursor.execute(sql)
             rows = cursor.fetchall()
             
-            print(f"📊 DEBUG - Query returned {len(rows)} rows")
+            print(f"[STATS] DEBUG - Query returned {len(rows)} rows")
             
             structured_results = []
             for r in rows:
@@ -346,10 +346,10 @@ Now provide your intelligent forensic analysis:
                     "agent": r[4] or "Unknown"
                 })
             
-            print(f"✅ DEBUG - Returning {len(structured_results)} structured results\n")
+            print(f"[OK] DEBUG - Returning {len(structured_results)} structured results\n")
             return structured_results
         except Exception as e:
-            print(f"❌ SQL Error: {e}")
+            print(f"[ERR] SQL Error: {e}")
             print(f"   Failed SQL: {sql}")
             return []
         finally:

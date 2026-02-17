@@ -177,9 +177,21 @@ Detailed documentation is available in the `docs/` directory:
 2.  **[INSTALLATION.md](docs/INSTALLATION.md)** - Comprehensive setup guide.
 3.  **[DEVELOPMENT.md](docs/DEVELOPMENT.md)** - Guide for contributors.
 4.  **[MONITORING.md](docs/MONITORING.md)** - Observability and metrics.
-5.  **[SYSLOG_PIPELINE.md](docs/arch/syslog_pipeline.md)** - Detailed Syslog-AI architecture.
+5.  **[SYSLOG_PIPELINE.md](standalone_app/features/syslog_analysis/syslog_pipeline.md)** - Detailed Syslog-AI architecture.
 
 ---
+
+---
+
+## 📅 Version 1.8.0 Update (Feb 17, 2026)
+
+### 🧠 Autonomous Threat Enrichment Integration
+SecureZen now features deep integration of the CrewAI multi-agent engine across all product tiers.
+
+- **Automated Standalone Enrichment**: The `optimized_pipeline.py` now automatically triggers the `IPIntelligenceCrew` for any unique external IPs detected during log processing.
+- **Background Intelligence Threads**: Enrichment investigations run in non-blocking background threads, ensuring the high-speed syslog pipeline remains responsive.
+- **Windows Stability Hardened**: Successfully resolved critical Windows-specific bugs, including `charmap` encoding errors (via global non-ASCII sanitization) and path resolution issues.
+- **Data Persistence Standardized**: Enriched threat intelligence (reputation scores, MITRE context, and recommendations) is now consistently stored in `syslog_alerts.db`.
 
 ---
 
@@ -239,5 +251,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 **Author**: PRAVEENKUMAR / KRYA SOLUTIONS PRIVATE LIMITED
 **Project**: [SecureZen GitHub](https://github.com/pr4vndevhubX/SecureZen)
 
-**Last Updated**: 2026-02-16
-**Version**: 1.7.0
+**Last Updated**: 2026-02-17
+**Version**: 1.8.0

@@ -30,7 +30,7 @@ class AlertStorage:
         # Initialize database
         self._init_database()
         
-        print(f"💾 AlertStorage initialized: {self.db_path}")
+        print(f"[DB] AlertStorage initialized: {self.db_path}")
     
     def _init_database(self):
         """Create tables with IP extraction support"""
@@ -112,7 +112,7 @@ class AlertStorage:
         conn.commit()
         conn.close()
         
-        print("✅ Database tables initialized with IP extraction support")
+        print("Database tables initialized with IP extraction support")
     
     def _extract_ips_from_alert(self, alert: Dict) -> Tuple[Optional[str], Optional[str]]:
         """
@@ -247,9 +247,9 @@ class AlertStorage:
             
             # Debug logging for IP extraction
             if srcip or dstip:
-                print(f"✅ Stored alert {alert_id} | srcip: {srcip} | dstip: {dstip}")
+                print(f"Stored alert {alert_id} | srcip: {srcip} | dstip: {dstip}")
             else:
-                print(f"⚠️  Stored alert {alert_id} | No IPs extracted")
+                print(f"[WARN]  Stored alert {alert_id} | No IPs extracted")
             
             # Update MITRE stats
             self._update_mitre_stats(cursor, alert)
@@ -259,11 +259,11 @@ class AlertStorage:
         
         except sqlite3.IntegrityError:
             # Duplicate alert (same wazuh_id + timestamp)
-            print(f"⚠️ Duplicate alert: {wazuh_id}")
+            print(f"[WARN] Duplicate alert: {wazuh_id}")
             return -1
         
         except Exception as e:
-            print(f"❌ Error storing alert: {e}")
+            print(f"[ERR] Error storing alert: {e}")
             conn.rollback()
             return -1
         
@@ -335,7 +335,7 @@ class AlertStorage:
                 ))
                 
         except Exception as e:
-            print(f"⚠️ Error updating MITRE stats: {e}")
+            print(f"[WARN] Error updating MITRE stats: {e}")
     
     def search_alerts_by_ip(self, ip_address: str, days: int = 30) -> List[Dict]:
         """
@@ -380,7 +380,7 @@ class AlertStorage:
             alert_dict['full_alert'] = json.loads(alert_dict['full_alert'])
             alerts.append(alert_dict)
         
-        print(f"🔍 IP Search: Found {len(alerts)} alerts for {ip_address} (last {days} days)")
+        print(f"[SEARCH] IP Search: Found {len(alerts)} alerts for {ip_address} (last {days} days)")
         
         return alerts
     
@@ -427,7 +427,7 @@ class AlertStorage:
         conn.commit()
         conn.close()
         
-        print(f"✅ Marked {len(alert_ids)} alerts as processed")
+        print(f"Marked {len(alert_ids)} alerts as processed")
     
     def store_processing_result(self, alert_id: int, result: Dict):
         """
@@ -660,7 +660,7 @@ class AlertStorage:
 
 # ===== TESTING =====
 if __name__ == "__main__":
-    print("🧪 Testing AlertStorage with IP extraction...\n")
+    print("? Testing AlertStorage with IP extraction...\n")
     
     storage = AlertStorage()
     
@@ -684,16 +684,16 @@ if __name__ == "__main__":
         "full_log": "SSH failed login from 192.168.202.4"
     }
     
-    print("📥 Storing test alert...")
+    print("[INPUT] Storing test alert...")
     alert_id = storage.store_alert(test_alert)
-    print(f"✅ Alert stored with ID: {alert_id}\n")
+    print(f"Alert stored with ID: {alert_id}\n")
     
     # Test IP search
-    print("🔍 Searching for IP: 192.168.202.4")
+    print("[SEARCH] Searching for IP: 192.168.202.4")
     results = storage.search_alerts_by_ip("192.168.202.4", days=30)
-    print(f"✅ Found {len(results)} alerts\n")
+    print(f"Found {len(results)} alerts\n")
     
     # Show stats
-    print("📊 Database Statistics:")
+    print("[STATS] Database Statistics:")
     stats = storage.get_stats()
     print(json.dumps(stats, indent=2))

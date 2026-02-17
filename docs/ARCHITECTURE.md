@@ -154,7 +154,8 @@ The React dashboard utilizes `VITE_SECUREZEN_MODE` environment variables to togg
    - **Parse**: Uses the **Drain** algorithm to extract templates and parameters.
    - **Detect**: Heuristic and ML-based anomaly detection identifies threats.
 4. **Promotion**: High-score events are promoted to the `AlertStorage` database.
-5. **Investigation**: CrewAI investigation is triggered for critical detections.
+5. **Investigation**: CrewAI enrichment is automatically triggered for detected external IPs in background threads.
+6. **Persistence**: Analyzed threat data is stored in `syslog_alerts.db` for deep visibility.
 
 ### 2. Investigation Swarm Flow
 1. **Coordinator Agent** validates the target IOC (IP/Domain).
@@ -175,4 +176,5 @@ SecureZen uses a **Sequential Process** via CrewAI:
 ---
 
 **Author**: PRAVEENKUMAR / KRYA SOLUTIONS PRIVATE LIMITED
-**Last Updated**: 2026-02-13
+**Last Updated**: 2026-02-17
+**Version**: 1.8.0

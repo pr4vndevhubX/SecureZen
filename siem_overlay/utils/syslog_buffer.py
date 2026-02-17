@@ -26,9 +26,9 @@ class SyslogBuffer:
                 db=self.redis_db,
                 decode_responses=True
             )
-            print(f"📡 Redis connected to {self.redis_host}:{self.redis_port}")
+            print(f"[SIGNAL] Redis connected to {self.redis_host}:{self.redis_port}")
         except Exception as e:
-            print(f"❌ Redis connection failed: {e}")
+            print(f"[ERR] Redis connection failed: {e}")
             self.client = None
 
     def push_raw_log(self, raw_data: str, source_ip: str = "unknown"):
@@ -50,7 +50,7 @@ class SyslogBuffer:
             self.client.lpush(self.queue_name, json.dumps(log_entry))
             return True
         except Exception as e:
-            print(f"❌ Error pushing to Redis: {e}")
+            print(f"[ERR] Error pushing to Redis: {e}")
             return False
 
     def pop_raw_log(self, timeout=0):

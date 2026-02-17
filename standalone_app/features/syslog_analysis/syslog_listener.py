@@ -21,13 +21,13 @@ def start_syslog_listener(host="0.0.0.0", port=514):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         sock.bind((host, port))
         print("="*50)
-        print(f"🚀 SecureZen Syslog Listener Started")
-        print(f"📡 Listening on: {host}:{port} (UDP)")
-        print(f"📦 Buffering to: Redis ({buffer.queue_name})")
+        print(f"[START] SecureZen Syslog Listener Started")
+        print(f"[SIGNAL] Listening on: {host}:{port} (UDP)")
+        print(f"? Buffering to: Redis ({buffer.queue_name})")
         print("="*50)
     except Exception as e:
-        print(f"❌ Failed to bind to port {port}: {e}")
-        print("💡 TIP: You might need administrator/root privileges to bind to port 514.")
+        print(f"[ERR] Failed to bind to port {port}: {e}")
+        print("? TIP: You might need administrator/root privileges to bind to port 514.")
         return
 
     try:
@@ -46,12 +46,12 @@ def start_syslog_listener(host="0.0.0.0", port=514):
             success = buffer.push_raw_log(raw_msg, source_ip=sender_ip)
             
             if success:
-                print(f"📥 [{datetime.now().strftime('%H:%M:%S')}] Log received from {sender_ip} -> Redis")
+                print(f"[INPUT] [{datetime.now().strftime('%H:%M:%S')}] Log received from {sender_ip} -> Redis")
             else:
-                print(f"⚠️ Failed to buffer log from {sender_ip}")
+                print(f"[WARN] Failed to buffer log from {sender_ip}")
 
     except KeyboardInterrupt:
-        print("\n🛑 Syslog listener stopped by user.")
+        print("\n? Syslog listener stopped by user.")
     finally:
         sock.close()
 

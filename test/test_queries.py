@@ -12,14 +12,14 @@ queries = [
     ("Failed related", "SELECT COUNT(*) FROM alerts WHERE rule_description LIKE '%failed%'"),
 ]
 
-print("🔍 Database Query Tests:\n")
+print("[SEARCH] Database Query Tests:\n")
 for name, query in queries:
     cursor.execute(query)
     count = cursor.fetchone()[0]
     print(f"{name}: {count}")
 
 # Show sample descriptions
-print("\n📝 Sample Alert Descriptions:")
+print("\n? Sample Alert Descriptions:")
 cursor.execute("SELECT DISTINCT rule_description FROM alerts LIMIT 10")
 for row in cursor.fetchall():
     print(f"  - {row[0]}")

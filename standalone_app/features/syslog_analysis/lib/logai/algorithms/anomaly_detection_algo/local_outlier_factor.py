@@ -22,7 +22,7 @@ class LOFParams(Config):
 
     :param n_neighbors: Number of neighbors to use by default for kneighbors queries.
     :param algorithm: Algorithm used to compute the nearest neighbors, e.g.,
-        ``{‘auto’, ‘ball_tree’, ‘kd_tree’, ‘brute’}``.
+        ``{?auto?, ?ball_tree?, ?kd_tree?, ?brute?}``.
     :param leaf_size: Leaf is size passed to BallTree or KDTree.
     :param metric: Metric to use for distance computation.
     :param p: Parameter for the Minkowski metric from ``sklearn.metrics.pairwise.pairwise_distances``.

@@ -20,20 +20,20 @@ connector = init_connector()
 
 # Sidebar for CSV Import
 with st.sidebar:
-    st.markdown("#### 📂 Import Wazuh Alerts")
+    st.markdown("#### [FILE] Import Wazuh Alerts")
     uploaded_file = st.file_uploader("Upload CSV", type=['csv'])
     if uploaded_file:
         csv_path = os.path.join(project_root, 'data/temp_alerts.csv')
         os.makedirs(os.path.dirname(csv_path), exist_ok=True)
         with open(csv_path, 'wb') as f:
             f.write(uploaded_file.getbuffer())
-        if st.button("📥 Load Alerts"):
+        if st.button("[INPUT] Load Alerts"):
             count = connector.load_csv_alerts(csv_path)
-            st.success(f"✅ Loaded {count} alerts!")
+            st.success(f"[OK] Loaded {count} alerts!")
             st.rerun()
 
 # Page Title
-st.markdown('<div class="main-title">🛡️ SIEM Overlay AI SOC</div>', unsafe_allow_html=True)
+st.markdown('<div class="main-title">?? SIEM Overlay AI SOC</div>', unsafe_allow_html=True)
 st.markdown('<div class="sub-title">Advanced Threat Correlation & Agentic Investigation</div>', unsafe_allow_html=True)
 
 # Metrics
@@ -51,23 +51,23 @@ with col4:
 st.markdown("---")
 
 # Main Content
-tabs = st.tabs(["🎯 SIEM Overlay", "📋 Alerts Table", "🛡️ Platform Status"])
+tabs = st.tabs(["? SIEM Overlay", "? Alerts Table", "?? Platform Status"])
 
 with tabs[0]:
-    st.markdown("### 🎯 Multi-Source Threat Correlation")
-    inner_tabs = st.tabs(["📊 Overview", "🎯 MITRE ATT&CK", "⚔️ Kill Chain"])
+    st.markdown("### ? Multi-Source Threat Correlation")
+    inner_tabs = st.tabs(["[STATS] Overview", "? MITRE ATT&CK", "?? Kill Chain"])
     
     with inner_tabs[0]:
         col_left, col_right = st.columns(2)
         with col_left:
-            st.markdown("### 🔴 Alert Severity Distribution")
+            st.markdown("### ? Alert Severity Distribution")
             severity_counts = stats.get('severity_counts', {})
             if severity_counts:
                 fig = go.Figure(data=[go.Pie(labels=list(severity_counts.keys()), values=list(severity_counts.values()), hole=0.5)])
                 fig.update_layout(paper_bgcolor='rgba(0,0,0,0)', font=dict(color='white'))
                 st.plotly_chart(fig, use_container_width=True)
         with col_right:
-            st.markdown("### 🌍 Alert Type Distribution")
+            st.markdown("### ? Alert Type Distribution")
             alert_types = db.get_alert_type_stats()
             if alert_types:
                 df = pd.DataFrame(alert_types)
@@ -76,12 +76,12 @@ with tabs[0]:
                 st.plotly_chart(fig, use_container_width=True)
 
 with tabs[1]:
-    st.markdown("### 📋 Unified Alert Feed")
+    st.markdown("### ? Unified Alert Feed")
     alerts = db.get_all_alerts(level_min=7)
     if alerts:
         st.dataframe(pd.DataFrame(alerts), use_container_width=True, hide_index=True)
 
 with tabs[2]:
-    st.markdown("### 🛡️ Platform Status")
-    st.success("✅ Wazuh SIEM Connector: ACTIVE")
-    st.success("🤖 Agent Swarm (CrewAI): READY")
+    st.markdown("### ?? Platform Status")
+    st.success("[OK] Wazuh SIEM Connector: ACTIVE")
+    st.success("? Agent Swarm (CrewAI): READY")
