@@ -18,11 +18,11 @@ class AlertStorage:
         if db_path is None:
             config_path = os.getenv("SECUREZEN_DB_PATH")
             if config_path:
-                self.db_path = config_path
+                self.db_path = os.path.abspath(config_path)
             else:
-                self.db_path = os.path.join(PROJECT_ROOT, "data/syslog_alerts.db")
+                self.db_path = os.path.abspath(os.path.join(PROJECT_ROOT, "data/syslog_alerts.db"))
         else:
-            self.db_path = db_path
+            self.db_path = os.path.abspath(db_path)
             
         # Ensure data directory exists
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
@@ -98,6 +98,29 @@ class AlertStorage:
             CREATE INDEX IF NOT EXISTS idx_rule_level 
             ON alerts(rule_level)
         """)
+
+        # Log Patterns table (LogAI)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS log_patterns (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                signature TEXT UNIQUE,
+                event_id TEXT,
+                occurrence_count INTEGER DEFAULT 1,
+                first_seen TEXT,
+                last_seen TEXT
+            )
+        ''')
+
+        # Log Clusters table (LogAI)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS log_clusters (
+                cluster_id INTEGER PRIMARY KEY,
+                size INTEGER DEFAULT 0,
+                representative_log TEXT,
+                anomalies_count INTEGER DEFAULT 0,
+                status TEXT
+            )
+        ''')
         
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_timestamp 

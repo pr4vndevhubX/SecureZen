@@ -12,14 +12,14 @@ class ThreatDatabase:
         if db_path is None:
             config_path = os.getenv("SECUREZEN_DB_PATH")
             if config_path:
-                self.db_path = config_path
+                self.db_path = os.path.abspath(config_path)
             else:
-                # Fix for path resolution - use absolute path to ensure we hit the right DB
-                self.db_path = os.path.join(PROJECT_ROOT, 'data', 'syslog_alerts.db')
+                # Use project root absolute path
+                self.db_path = os.path.abspath(os.path.join(PROJECT_ROOT, 'data', 'syslog_alerts.db'))
         else:
-            self.db_path = db_path
+            self.db_path = os.path.abspath(db_path)
             
-        print(f"DEBUG: ThreatDatabase using path: {self.db_path}")
+        print(f"DEBUG: ThreatDatabase using absolute path: {self.db_path}")
         
         # Ensure data directory exists
         os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
@@ -92,6 +92,29 @@ class ThreatDatabase:
                 classification TEXT,
                 severity TEXT,
                 UNIQUE(wazuh_id, timestamp)
+            )
+        ''')
+        
+        # Log Patterns table (for "Log Patterns" chart)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS log_patterns (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                signature TEXT UNIQUE,
+                event_id TEXT,
+                occurrence_count INTEGER DEFAULT 1,
+                first_seen TEXT,
+                last_seen TEXT
+            )
+        ''')
+
+        # Log Clusters table (for "Clustering Summary" chart)
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS log_clusters (
+                cluster_id INTEGER PRIMARY KEY,
+                size INTEGER DEFAULT 0,
+                representative_log TEXT,
+                anomalies_count INTEGER DEFAULT 0,
+                status TEXT
             )
         ''')
         
@@ -378,6 +401,64 @@ class ThreatDatabase:
             LIMIT ?
         ''', (level_min, limit))
         
+        columns = [column[0] for column in cursor.description]
+        results = []
+        for row in cursor.fetchall():
+            results.append(dict(zip(columns, row)))
+            
+        conn.close()
+        return results
+
+    def get_log_patterns(self, limit=10):
+        """Get top occurring log patterns with details"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT id, signature, occurrence_count, first_seen, last_seen 
+            FROM log_patterns 
+            ORDER BY occurrence_count DESC 
+            LIMIT ?
+        ''', (limit,))
+        
+        results = []
+        for row in cursor.fetchall():
+            results.append({
+                "id": row[0],
+                "pattern": row[1],
+                "count": row[2],
+                "first_seen": row[3],
+                "last_seen": row[4]
+            })
+            
+        conn.close()
+        return results
+
+    def get_log_clusters(self):
+        """Get log cluster distribution"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('''
+            SELECT cluster_id, size, representative_log, anomalies_count 
+            FROM log_clusters 
+            ORDER BY size DESC
+        ''')
+        
+        # Format for pie chart: { name: "Cluster X", value: size }
+        results = []
+        for row in cursor.fetchall():
+            results.append({
+                "name": f"Cluster {row[0]}",
+                "value": row[1],
+                "label": row[2],
+                "anomalies": row[3]
+            })
+            
+        conn.close()
+        conn.close()
+        return results
+        
         columns = [description[0] for description in cursor.description]
         raw_alerts = [dict(zip(columns, row)) for row in cursor.fetchall()]
         
@@ -524,11 +605,11 @@ class ThreatDatabase:
         cursor = conn.cursor()
         
         try:
-            # Get alerts from the last N hours
+            # Get alerts from the last N hours - handling 'Z' suffix in timestamp
             cursor.execute('''
                 SELECT timestamp, rule_level
                 FROM alerts
-                WHERE datetime(timestamp) >= datetime('now', '-' || ? || ' hours')
+                WHERE datetime(REPLACE(timestamp, 'Z', '')) >= datetime('now', '-' || ? || ' hours')
                 ORDER BY timestamp ASC
             ''', (hours,))
             
@@ -539,7 +620,7 @@ class ThreatDatabase:
                 now = datetime.now()
                 return [
                     {
-                        "time": (now - timedelta(hours=168-i*24)).strftime("%m/%d/%Y, %I:%M:%S %p"),
+                        "time": (now - timedelta(hours=168-i*24)).isoformat(),
                         "count": 45 + (i * 5)
                     }
                     for i in range(8)
@@ -557,7 +638,7 @@ class ThreatDatabase:
                     # Round down to nearest interval
                     bucket_time = dt.replace(minute=0, second=0, microsecond=0)
                     bucket_time = bucket_time - timedelta(hours=bucket_time.hour % interval_hours)
-                    bucket_key = bucket_time.strftime("%m/%d/%Y, %I:%M:%S %p")
+                    bucket_key = bucket_time.isoformat()
                     
                     if bucket_key not in time_buckets:
                         time_buckets[bucket_key] = 0
@@ -579,7 +660,7 @@ class ThreatDatabase:
                 wave_counts = [15, 18, 35, 60, 48, 25, 55, 65]
                 return [
                     {
-                        "time": (now - timedelta(hours=168-i*24)).strftime("%m/%d/%Y, %I:%M:%S %p"),
+                        "time": (now - timedelta(hours=168-i*24)).isoformat(),
                         "count": wave_counts[i]
                     }
                     for i in range(8)
@@ -594,7 +675,7 @@ class ThreatDatabase:
             wave_counts = [15, 18, 35, 60, 48, 25, 55, 65]
             return [
                 {
-                    "time": (now - timedelta(hours=168-i*24)).strftime("%m/%d/%Y, %I:%M:%S %p"),
+                    "time": (now - timedelta(hours=168-i*24)).isoformat(),
                     "count": wave_counts[i]
                 }
                 for i in range(8)

@@ -15,15 +15,7 @@ const COLORS = {
     killChain: ['#1e3a8a', '#1e40af', '#1d4ed8', '#2563eb', '#3b82f6', '#60a5fa', '#93c5fd']
 };
 
-const STABLE_EVOLUTION = [
-    { time: '2/2/2026, 4:00:00 AM', count: 15, threat: 10 },
-    { time: '2/2/2026, 8:00:00 AM', count: 18, threat: 15 },
-    { time: '2/2/2026, 11:00:00 AM', count: 35, threat: 25 },
-    { time: '2/2/2026, 12:00:00 PM', count: 60, threat: 40 },
-    { time: '2/2/2026, 1:00:00 PM', count: 48, threat: 35 },
-    { time: '2/2/2026, 2:00:00 PM', count: 25, threat: 20 },
-    { time: '2/2/2026, 3:00:00 PM', count: 55, threat: 38 },
-];
+const STABLE_EVOLUTION = [];
 
 const MOCK_KILL_CHAIN = [
     { name: "Reconnaissance", value: 85, detail: "Active scanning detected from 14 nodes." },
@@ -45,7 +37,7 @@ const MOCK_CVE = [
     { subject: 'DNS Masquerade', A: 20, B: 200, fullMark: 200, info: "Suspicious DNS activity and domain spoof spoofing." },
 ];
 
-export const TrendChart = ({ data = STABLE_EVOLUTION }) => {
+export const TrendChart = ({ data = STABLE_EVOLUTION, onClick }) => {
     const [hoveredPoint, setHoveredPoint] = useState(null);
 
     const CustomTooltip = ({ active, payload, coordinate }) => {
@@ -109,6 +101,8 @@ export const TrendChart = ({ data = STABLE_EVOLUTION }) => {
                             }
                         }}
                         onMouseLeave={() => setHoveredPoint(null)}
+                        onClick={onClick}
+                        className="cursor-pointer"
                     >
                         <defs>
                             <linearGradient id="colorTrend" x1="0" y1="0" x2="0" y2="1">
@@ -356,24 +350,28 @@ export const CveRadar = ({ data = MOCK_CVE }) => {
     );
 };
 
-export const ThreatEntities = () => (
-    <div className="bg-[#0a0e27] p-8 rounded-3xl border border-[#1a1f3a] shadow-2xl">
+export const ThreatEntities = ({ data = ["192.168.79.13", "10.20.10.78", "192.168.79.14", "DC-PROD", "10.0.0.15"] }) => (
+    <div className="bg-[#0a0e27] p-8 rounded-3xl border border-[#1a1f3a] shadow-2xl h-full">
         <h3 className="text-[11px] font-bold text-white mb-8 uppercase tracking-[0.5em] opacity-60 border-b border-[#1a1f3a] pb-4">Top Threat Actors / Targeted Entities</h3>
         <div className="flex flex-wrap gap-x-10 gap-y-6 items-center justify-center py-6">
-            {["192.168.79.13", "10.20.10.78", "192.168.79.14", "DC-PROD", "10.0.0.15"].map((host, i) => (
-                <motion.span key={host} whileHover={{ scale: 1.1, color: '#00d4ff' }} className={`font-mono font-bold cursor-pointer ${i === 0 ? 'text-4xl text-white' : 'text-xl text-gray-400'}`}>{host}</motion.span>
+            {data.map((host, i) => (
+                <motion.span key={typeof host === 'object' ? host.ip : host} whileHover={{ scale: 1.1, color: '#00d4ff' }} className={`font-mono font-bold cursor-pointer ${i === 0 ? 'text-4xl text-white' : 'text-xl text-gray-400'}`}>
+                    {typeof host === 'object' ? host.ip : host}
+                </motion.span>
             ))}
+            {data.length === 0 && <span className="text-gray-600 italic">No threat entities detected yet</span>}
         </div>
     </div>
 );
 
-export const AttackPaths = () => (
-    <div className="bg-[#0a0e27] p-8 rounded-3xl border border-[#1a1f3a] shadow-2xl">
+export const AttackPaths = ({ data = ["Potential Malware", "C2 Activity", "Brute Force", "SQL Injection"] }) => (
+    <div className="bg-[#0a0e27] p-8 rounded-3xl border border-[#1a1f3a] shadow-2xl h-full">
         <h3 className="text-[11px] font-bold text-white mb-8 uppercase tracking-[0.5em] opacity-60 border-b border-[#1a1f3a] pb-4">Primary Attack Path Vectors</h3>
         <div className="flex flex-wrap gap-x-6 gap-y-4 items-center justify-center py-6">
-            {["Potential Malware", "C2 Activity", "Brute Force", "SQL Injection"].map((v, i) => (
+            {data.map((v, i) => (
                 <motion.span key={v} whileHover={{ scale: 1.2, color: i === 0 ? '#ef4444' : '#00d4ff' }} className={`text-2xl font-bold opacity-40 cursor-pointer hover:opacity-100 flex items-center gap-2 ${i === 0 ? 'text-red-500' : 'text-blue-400'}`}>{v} {i < 2 && <Zap className="w-4 h-4 fill-current" />}</motion.span>
             ))}
+            {data.length === 0 && <span className="text-gray-600 italic">No vectors identified yet</span>}
         </div>
     </div>
 );
@@ -386,8 +384,8 @@ export const MitreCharts = (props) => (
             <CveRadar {...props} />
         </div>
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <ThreatEntities />
-            <AttackPaths />
+            <ThreatEntities data={props.top_ips} />
+            <AttackPaths data={props.top_vectors} />
         </div>
     </div>
 );

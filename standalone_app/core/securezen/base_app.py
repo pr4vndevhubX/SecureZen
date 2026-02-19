@@ -82,9 +82,8 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
         raise HTTPException(status_code=401, detail="Invalid token")
 
 # Standalone App defaults to syslog_alerts.db
-default_db = "data/syslog_alerts.db"
-
-db_path = os.getenv("SECUREZEN_DB_PATH", os.path.join(project_root, default_db))
+default_db_rel = "data/syslog_alerts.db"
+db_path = os.getenv("SECUREZEN_DB_PATH", os.path.abspath(os.path.join(project_root, default_db_rel)))
 db = ThreatDatabase(db_path=db_path)
 user_db = UserDatabase(db_path=os.path.join(project_root, "data/users.db"))
 connector = WazuhConnector()

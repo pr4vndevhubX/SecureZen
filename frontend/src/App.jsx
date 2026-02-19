@@ -8,7 +8,8 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    PieChart, Pie, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, Cell
+    PieChart, Pie, ResponsiveContainer, Tooltip as RechartsTooltip, Legend, Cell,
+    BarChart, Bar, XAxis, YAxis, CartesianGrid
 } from 'recharts';
 import { ReportViewer } from './components/ReportViewer';
 import { MitreAssistant, IpInvestigation } from './components/InvestigationTools';
@@ -17,10 +18,11 @@ import { MitreEvents } from './components/MitreEvents';
 import ThreatFunnel from './components/ThreatFunnel';
 import Login from './components/Login';
 import Copilot from './components/Copilot';
+import LogAIDashboard from './components/LogAIDashboard';
 import { API_BASE_URL } from './config';
 
 // Final Unified Hybrid Mode Implementation
-const API_MODE_FALLBACK = import.meta.env.VITE_SECUREZEN_MODE || 'overlay';
+const API_MODE_FALLBACK = import.meta.env.VITE_SECUREZEN_MODE || 'standalone';
 
 
 const CustomPieTooltip = ({ active, payload, total }) => {
@@ -51,11 +53,11 @@ const AISOCDashboard = () => {
 
     const [alerts, setAlerts] = useState([]);
     const [stats, setStats] = useState({
-        critical: 16, major: 77, minor: 290, unassigned: 74, closed: 246, remediated: 0,
-        totalEvents: "1.87B", threatScenarios: "526.77K", openAlerts: 77,
+        critical: 0, major: 0, minor: 0, unassigned: 0, closed: 0, remediated: 0,
+        totalEvents: '0', threatScenarios: '0', openAlerts: 0,
         top_mitre: [], top_ips: []
     });
-    const [activeTab, setActiveTab] = useState('dashboard');
+    const [activeTab, setActiveTab] = useState('securezen_analysis');
     const [eventFilter, setEventFilter] = useState('All');
     const [statusFilter, setStatusFilter] = useState('All'); // Added status state
     const [loading, setLoading] = useState(true);
@@ -74,6 +76,8 @@ const AISOCDashboard = () => {
     const [cveSummary, setCveSummary] = useState(null);
     const [radarData, setRadarData] = useState([]);
     const [alertTrends, setAlertTrends] = useState([]);
+    const [logPatterns, setLogPatterns] = useState([]);
+    const [clusters, setClusters] = useState([]);
     const [isSidebarOpen, setIsSidebarOpen] = useState(true);
     const [expandedCategories, setExpandedCategories] = useState({
         analytics: true,
@@ -82,7 +86,7 @@ const AISOCDashboard = () => {
     });
     const [isSidebarHovered, setIsSidebarHovered] = useState(false);
     const [searchTerm, setSearchTerm] = useState('');
-    const [simulationMode, setSimulationMode] = useState(true);
+    const [simulationMode, setSimulationMode] = useState(false);
     const [lastRefresh, setLastRefresh] = useState(new Date().toLocaleTimeString());
     const [dashboardMode, setDashboardMode] = useState(API_MODE_FALLBACK);
     const [configLoaded, setConfigLoaded] = useState(false);
@@ -257,36 +261,27 @@ const AISOCDashboard = () => {
             const data = await res.json();
 
             if (data.alerts) {
-                const formattedAlerts = data.alerts.map(a => {
-                    const alertObj = {
-                        ...a, // Pass all raw fields
-                        time: new Date(a.timestamp).toLocaleString(),
-                        alertId: a.alert_id,
-                        type: a.rule_description,
-                        severity: a.severity,
-                        message: a.message,
-                        entity: a.agent_name || a.src_ip || a.srcip,
-                        srcIp: a.src_ip || a.srcip,
-                        mitreId: a.rule_mitre_id,
-                        mitreTactic: a.rule_mitre_tactic,
-                        is_simulated: a.is_simulated
-                    };
-                    alertObj.killChainPhase = getKillChainPhase(alertObj);
-                    return alertObj;
-                });
+                const formattedAlerts = data.alerts.map(a => ({
+                    ...a,
+                    time: new Date(a.timestamp).toLocaleString(),
+                    alertId: a.alert_id,
+                    type: a.rule_description,
+                    severity: a.severity,
+                    message: a.message,
+                    entity: a.agent_name || a.src_ip || a.srcip,
+                    srcIp: a.src_ip || a.srcip,
+                    mitreId: a.rule_mitre_id,
+                    mitreTactic: a.rule_mitre_tactic
+                }));
                 setAlerts(formattedAlerts);
             }
 
             if (data.stats) {
-                const randomDrift = () => Math.floor(Math.random() * 20) - 10;
-
-                // Format large numbers
                 const formatNum = (num) => {
                     if (num >= 1000000) return (num / 1000000).toFixed(2) + 'M';
                     if (num >= 1000) return (num / 1000).toFixed(2) + 'K';
-                    return num.toString();
+                    return (num || 0).toString();
                 };
-
                 setStats(prev => ({
                     ...prev,
                     critical: data.stats.severity_counts?.Critical || 0,
@@ -314,6 +309,14 @@ const AISOCDashboard = () => {
 
             if (data.alert_trends) {
                 setAlertTrends(data.alert_trends);
+            }
+
+            if (data.log_patterns) {
+                setLogPatterns(data.log_patterns);
+            }
+
+            if (data.clusters) {
+                setClusters(data.clusters);
             }
 
             setLoading(false);
@@ -358,7 +361,7 @@ const AISOCDashboard = () => {
 
     const navItems = {
         analytics: [
-            { id: 'dashboard', label: 'Performance Dashboard', icon: Activity },
+            { id: 'securezen_analysis', label: 'Main Dashboard', icon: Cpu },
             { id: 'events', label: 'Alert Dashboard', icon: Shield },
         ],
         insights: [
@@ -649,10 +652,114 @@ const AISOCDashboard = () => {
                                             </>
                                         )}
                                         {dashboardMode === 'standalone' && (
-                                            <div className="lg:col-span-2 bg-[#0a0e27] rounded-3xl p-8 border border-[#1a1f3a] shadow-2xl h-[400px]">
-                                                <h3 className="text-white font-bold mb-4">LogAI Anomaly Clusters</h3>
-                                                <p className="text-gray-400">Standalone syslog analysis mode active. Showing neural log patterns.</p>
-                                                {/* Placeholder for LogAI specific visualization */}
+                                            <div className="lg:col-span-2 bg-[#0a0e27] rounded-3xl p-6 border border-[#1a1f3a] shadow-2xl min-h-[600px] flex flex-col">
+                                                <div className="flex justify-between items-center mb-6">
+                                                    <div>
+                                                        <h3 className="text-white font-bold uppercase tracking-widest text-lg">LogAI Pattern Analysis</h3>
+                                                        <p className="text-gray-400 text-xs mt-1">Automated pattern extraction and clustering</p>
+                                                    </div>
+                                                    <div className="flex gap-4">
+                                                        <div className="text-center px-4 py-2 bg-[#1a1f3a]/50 rounded-lg border border-[#2d3748]">
+                                                            <div className="text-xs text-gray-400 uppercase">Total Patterns</div>
+                                                            <div className="text-xl font-bold text-[#00d4ff]">{logPatterns.length}</div>
+                                                        </div>
+                                                        <div className="text-center px-4 py-2 bg-[#1a1f3a]/50 rounded-lg border border-[#2d3748]">
+                                                            <div className="text-xs text-gray-400 uppercase">Anomalies</div>
+                                                            <div className="text-xl font-bold text-[#f97316]">{clusters.reduce((acc, c) => acc + (c.anomalies || 0), 0)}</div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Charts Section: Side by Side */}
+                                                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6 flex-1">
+                                                    {/* LEFT: Occurrence Bar Chart */}
+                                                    <div className="bg-[#1a1f3a]/30 rounded-xl p-4 border border-[#2d3748] flex flex-col">
+                                                        <h4 className="text-xs text-gray-400 mb-4 uppercase font-bold tracking-wider">Occurrence (Log Count)</h4>
+                                                        <div className="flex-1 min-h-[250px]">
+                                                            <ResponsiveContainer width="100%" height="100%">
+                                                                <BarChart data={logPatterns} layout="vertical" margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+                                                                    <CartesianGrid strokeDasharray="3 3" stroke="#2d3748" horizontal={false} />
+                                                                    <XAxis type="number" stroke="#718096" tick={{ fontSize: 10 }} />
+                                                                    <YAxis dataKey="id" type="category" width={40} stroke="#718096" tick={{ fontSize: 10 }} />
+                                                                    <RechartsTooltip
+                                                                        cursor={{ fill: '#1a1f3a' }}
+                                                                        contentStyle={{ backgroundColor: '#0a0e27', borderColor: '#2d3748' }}
+                                                                        itemStyle={{ color: '#00d4ff' }}
+                                                                        formatter={(value, name, props) => [value, 'Count']}
+                                                                        labelFormatter={(label) => `Pattern ID: ${label}`}
+                                                                    />
+                                                                    <Bar dataKey="count" fill="#4daaf8" radius={[0, 4, 4, 0]} barSize={20} />
+                                                                </BarChart>
+                                                            </ResponsiveContainer>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* RIGHT: Trend/Cluster Chart (Mixed) */}
+                                                    <div className="bg-[#1a1f3a]/30 rounded-xl p-4 border border-[#2d3748] flex flex-col">
+                                                        <h4 className="text-xs text-gray-400 mb-4 uppercase font-bold tracking-wider">Cluster Distribution / Trend</h4>
+                                                        <div className="flex-1 min-h-[250px]">
+                                                            <ResponsiveContainer width="100%" height="100%">
+                                                                <PieChart>
+                                                                    <Pie
+                                                                        data={clusters}
+                                                                        cx="50%" cy="50%"
+                                                                        innerRadius={60} outerRadius={90}
+                                                                        paddingAngle={4}
+                                                                        dataKey="value"
+                                                                    >
+                                                                        {clusters.map((entry, index) => (
+                                                                            <Cell key={`cell-${index}`} fill={['#60c07c', '#4daaf8', '#ba6fd4', '#f97316', '#22c55e'][index % 5]} />
+                                                                        ))}
+                                                                    </Pie>
+                                                                    <RechartsTooltip
+                                                                        contentStyle={{ backgroundColor: '#0a0e27', borderColor: '#2d3748' }}
+                                                                        itemStyle={{ color: '#fff' }}
+                                                                    />
+                                                                    <Legend verticalAlign="bottom" height={36} iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
+                                                                </PieChart>
+                                                            </ResponsiveContainer>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* Bottom: Detailed Log Pattern Table */}
+                                                <div className="bg-[#1a1f3a]/30 rounded-xl border border-[#2d3748] overflow-hidden flex-1 max-h-[300px] flex flex-col">
+                                                    <div className="bg-[#1a1f3a] px-4 py-3 border-b border-[#2d3748] flex justify-between items-center">
+                                                        <h4 className="text-xs text-white font-bold uppercase tracking-wider">Log Patterns Details</h4>
+                                                        <button className="text-[10px] text-[#00d4ff] hover:text-white transition-colors">View All Analysis</button>
+                                                    </div>
+                                                    <div className="overflow-auto flex-1">
+                                                        <table className="w-full text-left text-sm text-gray-400">
+                                                            <thead className="bg-[#0a0e27] text-xs uppercase font-bold text-gray-500 sticky top-0">
+                                                                <tr>
+                                                                    <th className="px-4 py-3">Pattern ID</th>
+                                                                    <th className="px-4 py-3">Log Signature Template</th>
+                                                                    <th className="px-4 py-3 text-right">Occurrences</th>
+                                                                    <th className="px-4 py-3 text-right">Last Seen</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody className="divide-y divide-[#2d3748]">
+                                                                {logPatterns.map((pattern, idx) => (
+                                                                    <tr key={idx} className="hover:bg-[#1a1f3a]/50 transition-colors">
+                                                                        <td className="px-4 py-3 text-[#00d4ff] font-mono text-xs">#{pattern.id || idx + 1}</td>
+                                                                        <td className="px-4 py-3 font-mono text-xs text-gray-300 truncate max-w-[400px]" title={pattern.pattern}>
+                                                                            {pattern.pattern}
+                                                                        </td>
+                                                                        <td className="px-4 py-3 text-right font-bold text-white">{pattern.count}</td>
+                                                                        <td className="px-4 py-3 text-right text-xs">
+                                                                            {pattern.last_seen ? new Date(pattern.last_seen).toLocaleTimeString() : '-'}
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                                {logPatterns.length === 0 && (
+                                                                    <tr>
+                                                                        <td colSpan="4" className="px-4 py-8 text-center text-gray-600 italic">No patterns detected yet. Run ingestion.</td>
+                                                                    </tr>
+                                                                )}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -818,6 +925,21 @@ const AISOCDashboard = () => {
                                             </div>
                                         </div>
                                     </div>
+                                </motion.div>
+                            )}
+
+                            {activeTab === 'securezen_analysis' && (
+                                <motion.div
+                                    key="securezen_analysis"
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    exit={{ opacity: 0, y: -10 }}
+                                >
+                                    <LogAIDashboard
+                                        setActiveTab={setActiveTab}
+                                        setEventFilter={setEventFilter}
+                                        setStatusFilter={setStatusFilter}
+                                    />
                                 </motion.div>
                             )}
                         </AnimatePresence>

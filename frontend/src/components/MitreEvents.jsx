@@ -1,510 +1,453 @@
-import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer, CartesianGrid, Cell } from 'recharts';
-import { Search, Filter, Download, Zap, AlertCircle, Clock, Server, Shield, ChevronDown, ChevronRight, ExternalLink, Activity, ShieldAlert } from 'lucide-react';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect, useMemo } from 'react';
+import {
+    BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip,
+    ResponsiveContainer, CartesianGrid, Cell
+} from 'recharts';
+import {
+    Search, Filter, ChevronDown, ChevronRight, Activity,
+    ShieldAlert, Zap, RefreshCw, X
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { API_BASE_URL } from '../config';
 
-const EventRow = ({ alert, index, onAnalyze, getSeverityColor }) => {
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const LEVEL_COLOR = (level) => {
+    const l = parseInt(level) || 0;
+    if (l >= 12) return 'bg-red-500/20 text-red-400 border-red-500/40';
+    if (l >= 10) return 'bg-orange-500/20 text-orange-400 border-orange-500/40';
+    if (l >= 7) return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40';
+    return 'bg-blue-500/20 text-blue-400 border-blue-500/40';
+};
+
+const SEV_COLOR = (sev) => {
+    switch ((sev || '').toLowerCase()) {
+        case 'critical': return 'bg-red-500/20 text-red-400 border-red-500/40';
+        case 'high':
+        case 'major': return 'bg-orange-500/20 text-orange-400 border-orange-500/40';
+        case 'medium': return 'bg-yellow-500/20 text-yellow-400 border-yellow-500/40';
+        default: return 'bg-blue-500/20 text-blue-400 border-blue-500/40';
+    }
+};
+
+// Build time-histogram data from alerts (group by hour)
+const buildHistogram = (alerts) => {
+    const buckets = {};
+    alerts.forEach(a => {
+        const d = new Date(a.timestamp || a.time);
+        if (isNaN(d)) return;
+        const key = `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:00`;
+        buckets[key] = (buckets[key] || 0) + 1;
+    });
+    return Object.entries(buckets)
+        .sort(([a], [b]) => new Date(a) - new Date(b))
+        .map(([time, count]) => ({ time, count }));
+};
+
+// Extract all unique field names from alerts
+const extractFields = (alerts) => {
+    const fieldSet = new Set();
+    const CORE = ['timestamp', 'rule_level', 'rule_description', 'agent_name',
+        'agent_ip', 'srcip', 'dstip', 'severity', 'rule_id', 'alert_id'];
+    CORE.forEach(f => fieldSet.add(f));
+    alerts.slice(0, 50).forEach(a => {
+        Object.keys(a).forEach(k => {
+            if (typeof a[k] !== 'object') fieldSet.add(k);
+        });
+    });
+    return Array.from(fieldSet).sort();
+};
+
+// ── Expanded Row ──────────────────────────────────────────────────────────────
+const ExpandedRow = ({ alert, onAnalyze, selectedFields }) => {
     const [explaining, setExplaining] = useState(false);
     const [explanation, setExplanation] = useState(null);
-    const [aiSeverity, setAiSeverity] = useState(null);
     const [aiAction, setAiAction] = useState(null);
 
-    const handleExplain = async (e, msg) => {
-        e.stopPropagation();
+    const handleExplain = async () => {
         if (explanation) { setExplanation(null); return; }
         setExplaining(true);
         try {
             const token = localStorage.getItem('auth_token');
             const res = await fetch(`${API_BASE_URL}/api/ai/explain-alert`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${token}`
-                },
-                body: JSON.stringify({ message: msg })
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify({ message: alert.rule_description || alert.message })
             });
             const data = await res.json();
             setExplanation(data.explanation);
-            if (data.severity) setAiSeverity(data.severity);
             if (data.action) setAiAction(data.action);
-        } catch (err) {
-            setExplanation("Error fetching AI insight.");
+        } catch {
+            setExplanation('AI insight unavailable.');
         }
         setExplaining(false);
     };
 
-    const currentSeverity = aiSeverity || alert.severity;
+    // Show selected fields or all scalar fields
+    const displayFields = selectedFields.length > 0
+        ? selectedFields
+        : Object.keys(alert).filter(k => typeof alert[k] !== 'object');
 
     return (
-        <tr className="hover:bg-[#00d4ff]/5 transition-colors group cursor-pointer border-b border-[#2d3748]/20">
-            <td className="py-4 px-4 text-center text-gray-600 font-mono text-[9px]">{index + 1}</td>
-            <td className="py-4 px-4">
-                <div className="flex flex-col">
-                    <span className="text-gray-300 font-bold">{alert.time?.split(',')[0]}</span>
-                    <span className="text-[9px] text-gray-500">{alert.time?.split(',')[1]}</span>
+        <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="border-l-4 border-[#00d4ff] ml-8 my-1 bg-[#060914]"
+        >
+            <div className="p-5">
+                {/* Action bar */}
+                <div className="flex gap-3 mb-5 flex-wrap">
+                    <button
+                        onClick={() => onAnalyze(alert.agent_name || alert.srcip || alert.alert_id)}
+                        className="flex items-center gap-2 px-4 py-1.5 bg-[#00d4ff] text-black rounded text-[10px] font-bold uppercase hover:bg-[#33ddff] transition-all shadow-lg"
+                    >
+                        <Activity className="w-3.5 h-3.5" />
+                        Analyze {alert.agent_name || 'Agent'}
+                    </button>
+                    <button
+                        onClick={handleExplain}
+                        className={`flex items-center gap-2 px-4 py-1.5 rounded text-[10px] font-bold uppercase transition-all border ${explanation
+                                ? 'bg-[#60c07c]/20 text-[#60c07c] border-[#60c07c]/40'
+                                : 'bg-[#00d4ff]/10 text-[#00d4ff] border-[#00d4ff]/30 hover:bg-[#00d4ff]/20'
+                            } ${explaining ? 'animate-pulse' : ''}`}
+                    >
+                        <Zap className="w-3.5 h-3.5" />
+                        {explaining ? 'Analyzing...' : explanation ? 'AI Triaged ✓' : 'AI Triage'}
+                    </button>
                 </div>
-            </td>
-            <td className="py-4 px-4 text-gray-500 font-mono text-[10px]">{alert.alertId?.slice(-10)}</td>
-            <td className="py-4 px-4 text-white font-bold tracking-tight">
-                <div className="flex flex-col gap-1">
-                    {alert.type}
-                    {alert.is_simulated && (
-                        <span className="text-[7px] text-[#f97316] font-bold uppercase tracking-tight flex items-center gap-0.5 px-1.5 py-0.5 bg-[#f97316]/10 border border-[#f97316]/20 rounded-full w-fit">
-                            <Zap className="w-2 h-2 fill-[#f97316]" /> AI Simulation
-                        </span>
-                    )}
-                </div>
-            </td>
-            <td className="py-4 px-4">
-                <div className="flex flex-col gap-1">
-                    <span className={`px-2 py-0.5 rounded-[4px] text-[8px] font-bold uppercase border leading-none w-fit ${getSeverityColor(currentSeverity)}`}>
-                        {currentSeverity === 'High' ? 'Major' : currentSeverity === 'Medium' || currentSeverity === 'Low' ? 'Minor' : currentSeverity}
-                    </span>
-                    {aiSeverity && (
-                        <span className="text-[7px] text-[#00d4ff] font-bold uppercase tracking-tighter flex items-center gap-0.5">
-                            <Zap className="w-2 h-2 fill-[#00d4ff]" /> Neural Triage
-                        </span>
-                    )}
-                </div>
-            </td>
-            <td className="py-4 px-4">
-                <button
-                    onClick={(e) => handleExplain(e, alert.message)}
-                    className={`px-3 py-1 rounded text-[9px] font-bold uppercase transition-all shadow-[0_0_10px_rgba(59,130,246,0.1)] border ${explanation ? 'bg-[#60c07c]/20 text-[#60c07c] border-[#60c07c]/40' : 'bg-[#3b82f6]/20 text-[#3b82f6] border-[#3b82f6]/40 hover:bg-[#3b82f6]/30'}`}
-                >
-                    {explanation ? 'TRIAGED' : 'Await...'}
-                </button>
-            </td>
-            <td className="py-4 px-4">
-                <div className="p-1 px-1.5 bg-[#f97316]/10 rounded border border-[#f97316]/20 w-fit">
-                    <Shield className="w-3.5 h-3.5 text-[#f97316]" />
-                </div>
-            </td>
-            <td className="py-4 px-4 text-gray-400 font-mono text-[10px]">
-                {alert.srcIp || 'N/A'}
-            </td>
-            <td className="py-4 px-4 max-w-sm">
-                <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2 group/msg">
-                        <span className="truncate text-gray-400 group-hover:text-gray-200 transition-colors uppercase font-medium tracking-tighter text-[10px]">
-                            {alert.message}
-                        </span>
-                        <button
-                            onClick={(e) => handleExplain(e, alert.message)}
-                            className={`p-1 rounded bg-[#00d4ff]/10 text-[#00d4ff] hover:bg-[#00d4ff]/20 transition-all ${explaining ? 'animate-pulse' : ''}`}
-                            title="AI Smart Expand"
-                        >
-                            <Zap className={`w-3 h-3 ${explaining ? 'fill-[#00d4ff]' : ''}`} />
-                        </button>
+
+                {explanation && (
+                    <div className="mb-4 p-3 bg-[#00d4ff]/5 border border-[#00d4ff]/20 rounded text-[11px] text-[#00d4ff]">
+                        <span className="font-bold mr-2">✨ AI INSIGHT:</span>{explanation}
+                        {aiAction && <div className="text-[10px] text-gray-400 mt-1"><span className="text-[#60c07c] font-bold mr-2">🎯 NEXT STEP:</span>{aiAction}</div>}
                     </div>
-                    {explanation && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            className="text-[10px] text-[#00d4ff] bg-[#00d4ff]/5 p-2 rounded border border-[#00d4ff]/20"
-                        >
-                            <div className="flex flex-col gap-1">
-                                <div><span className="font-bold mr-2">✨ AI INSIGHT:</span>{explanation}</div>
-                                {aiAction && <div className="text-[9px] text-gray-400 mt-1 font-bold"><span className="text-[#60c07c] mr-2">🎯 NEXT STEP:</span>{aiAction}</div>}
-                            </div>
-                        </motion.div>
-                    )}
-                </div>
-            </td>
-            <td className="py-4 px-4">
-                <div className="bg-[#00d4ff]/10 text-[#00d4ff] border border-[#00d4ff]/30 px-3 py-1 rounded font-mono font-bold flex items-center justify-between gap-3 min-w-[130px] text-[10px] tracking-widest shadow-inner">
-                    {alert.entity}
-                    <ChevronDown className="w-3 h-3 opacity-50" />
-                </div>
-            </td>
-            <td className="py-4 px-4 text-gray-500 font-bold uppercase tracking-widest text-[10px]">
-                {alert.user || 'SYSTEM'}
-            </td>
-            <td className="py-4 px-4 text-center">
-                <div className="flex flex-col items-center">
-                    <span className="text-white font-bold text-xs leading-none">85%</span>
-                    <div className="w-12 h-1 bg-gray-800 rounded-full mt-1 overflow-hidden">
-                        <div className="w-[85%] h-full bg-[#60c07c]" />
+                )}
+
+                {/* Two-column layout: Primary Fields + Raw JSON */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {/* Primary Fields */}
+                    <div>
+                        <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 border-b border-[#1a1f3a] pb-1">
+                            Primary Fields
+                        </h4>
+                        <div className="space-y-0.5">
+                            {displayFields.map(key => {
+                                const val = alert[key];
+                                if (val === null || val === undefined || val === '') return null;
+                                return (
+                                    <div key={key} className="grid grid-cols-5 gap-2 hover:bg-white/5 px-1 py-0.5 rounded group/row">
+                                        <span className="col-span-2 text-gray-500 text-[10px] font-bold uppercase truncate">{key}</span>
+                                        <span className="col-span-3 text-gray-300 text-[11px] font-mono break-all group-hover/row:text-white transition-colors">
+                                            {String(val)}
+                                        </span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Raw JSON */}
+                    <div>
+                        <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-3 border-b border-[#1a1f3a] pb-1">
+                            Raw Data
+                        </h4>
+                        <div className="bg-black/50 rounded border border-[#1a1f3a] p-3 max-h-[300px] overflow-auto">
+                            <pre className="text-[10px] text-gray-400 font-mono leading-relaxed whitespace-pre-wrap break-all">
+                                {JSON.stringify(alert, null, 2)}
+                            </pre>
+                        </div>
                     </div>
                 </div>
-            </td>
-            <td className="py-4 px-4 text-center">
-                <button
-                    onClick={(e) => { e.stopPropagation(); onAnalyze(alert.entity); }}
-                    className="bg-white/5 hover:bg-[#00d4ff] text-white hover:text-black border border-white/10 hover:border-[#00d4ff] p-2 rounded-lg transition-all group/btn shadow-xl active:scale-90"
-                >
-                    <Activity className="w-4 h-4 group-hover/btn:scale-110 transition-transform" />
-                </button>
-            </td>
-        </tr>
+            </div>
+        </motion.div>
     );
 };
 
-export const MitreEvents = ({ alerts, onAnalyze, initialSeverity = 'All', initialStatus = 'All', initialSearch = '', onSearchChange }) => {
+// ── Main Component ────────────────────────────────────────────────────────────
+export const MitreEvents = ({
+    alerts = [],
+    onAnalyze,
+    initialSeverity = 'All',
+    initialStatus = 'All',
+    initialSearch = '',
+    onSearchChange
+}) => {
     const [searchTerm, setSearchTerm] = useState(initialSearch);
     const [severityFilter, setSeverityFilter] = useState(initialSeverity);
     const [statusFilter, setStatusFilter] = useState(initialStatus);
     const [timeFilter, setTimeFilter] = useState('All');
-    const [activeFilters, setActiveFilters] = useState([]); // Array of {field, value}
+    const [activeFilters, setActiveFilters] = useState([]);
+    const [expandedRows, setExpandedRows] = useState({});
+    const [selectedFields, setSelectedFields] = useState([
+        'timestamp', 'rule_level', 'rule_description', 'agent_name', 'srcip', 'severity'
+    ]);
+    const [fieldSearch, setFieldSearch] = useState('');
 
-    useEffect(() => {
-        if (initialSearch !== undefined) setSearchTerm(initialSearch);
-    }, [initialSearch]);
+    useEffect(() => { setSearchTerm(initialSearch); }, [initialSearch]);
+    useEffect(() => { setSeverityFilter(initialSeverity); }, [initialSeverity]);
+    useEffect(() => { setStatusFilter(initialStatus); }, [initialStatus]);
 
-    useEffect(() => {
-        if (initialSeverity) setSeverityFilter(initialSeverity);
-    }, [initialSeverity]);
+    const allFields = useMemo(() => extractFields(alerts), [alerts]);
 
-    useEffect(() => {
-        if (initialStatus) setStatusFilter(initialStatus);
-    }, [initialStatus]);
-
-    const handleSearchChange = (e) => {
-        const val = e.target.value;
-        setSearchTerm(val);
-        if (onSearchChange) onSearchChange(val);
+    const isWithinTime = (ts, range) => {
+        if (range === 'All') return true;
+        const diff = Date.now() - new Date(ts);
+        const map = { '15m': 9e5, '1h': 36e5, '24h': 864e5, '7d': 6048e5 };
+        return diff <= (map[range] || Infinity);
     };
+
+    const filteredAlerts = useMemo(() => {
+        return (alerts || []).filter(alert => {
+            if (!isWithinTime(alert.timestamp, timeFilter)) return false;
+            const q = searchTerm.toLowerCase();
+            if (q && !JSON.stringify(alert).toLowerCase().includes(q)) return false;
+            if (severityFilter !== 'All') {
+                const sev = (alert.severity || '').toLowerCase();
+                if (severityFilter === 'Critical' && sev !== 'critical') return false;
+                if (severityFilter === 'Major' && !['high', 'major'].includes(sev)) return false;
+                if (severityFilter === 'Minor' && !['medium', 'low', 'minor'].includes(sev)) return false;
+            }
+            if (statusFilter !== 'All' && (alert.status || 'Open') !== statusFilter) return false;
+            for (const f of activeFilters) {
+                const v = String(alert[f.field] || alert[f.field.replace('.', '_')] || '');
+                if (v !== String(f.value)) return false;
+            }
+            return true;
+        });
+    }, [alerts, searchTerm, severityFilter, statusFilter, timeFilter, activeFilters]);
+
+    const histogramData = useMemo(() => buildHistogram(filteredAlerts), [filteredAlerts]);
 
     const addFilter = (field, value) => {
-        if (!activeFilters.find(f => f.field === field && f.value === value)) {
-            setActiveFilters([...activeFilters, { field, value }]);
-        }
+        if (!activeFilters.find(f => f.field === field && f.value === value))
+            setActiveFilters(prev => [...prev, { field, value }]);
     };
+    const removeFilter = (field, value) =>
+        setActiveFilters(prev => prev.filter(f => !(f.field === field && f.value === value)));
 
-    const removeFilter = (field, value) => {
-        setActiveFilters(activeFilters.filter(f => !(f.field === field && f.value === value)));
-    };
-
-    const isWithinTime = (timestamp, range) => {
-        if (range === 'All') return true;
-        const date = new Date(timestamp);
-        const now = new Date();
-        const diffMs = now - date;
-
-        switch (range) {
-            case '15m': return diffMs <= 15 * 60 * 1000;
-            case '1h': return diffMs <= 60 * 60 * 1000;
-            case '24h': return diffMs <= 24 * 60 * 60 * 1000;
-            case '7d': return diffMs <= 7 * 24 * 60 * 60 * 1000;
-            default: return true;
-        }
-    };
-
-    const filteredAlerts = (alerts || []).filter(alert => {
-        // 1. Time Filter
-        if (!isWithinTime(alert.timestamp, timeFilter)) return false;
-
-        // 2. Search Term
-        const searchString = searchTerm.toLowerCase();
-        const matchesSearch =
-            (alert.entity || '').toLowerCase().includes(searchString) ||
-            (alert.type || '').toLowerCase().includes(searchString) ||
-            (alert.message || '').toLowerCase().includes(searchString) ||
-            (alert.mitreTactic || '').toLowerCase().includes(searchString) ||
-            (alert.killChainPhase || '').toLowerCase().includes(searchString) ||
-            (alert.agent_name || '').toLowerCase().includes(searchString) ||
-            (alert.rule_level?.toString() || '').includes(searchString) ||
-            JSON.stringify(alert).toLowerCase().includes(searchString); // Fallback: Check everywhere
-
-        if (!matchesSearch) return false;
-
-        // 3. Severity Filter
-        if (severityFilter !== 'All') {
-            if (severityFilter === 'Critical' && alert.severity !== 'Critical') return false;
-            if (severityFilter === 'Major' && (alert.severity !== 'High' && alert.severity !== 'Major')) return false;
-            if (severityFilter === 'Minor' && (alert.severity !== 'Medium' && alert.severity !== 'Low' && alert.severity !== 'Minor')) return false;
-        }
-
-        // 4. Status Filter
-        if (statusFilter !== 'All') {
-            // Mock status logic: If alert has no status, assume 'Open'
-            const currentStatus = alert.status || 'Open';
-            if (currentStatus !== statusFilter) return false;
-        }
-
-        // 5. Active Badge Filters (Drill-down)
-        for (const filter of activeFilters) {
-            const alertVal = String(alert[filter.field] || alert[filter.field.replace('.', '_')] || ''); // Try both dot and underscore
-            // Special handling for nested or mapped fields
-            let match = false;
-            if (filter.field === 'rule.level' && String(alert.rule_level) === String(filter.value)) match = true;
-            else if (filter.field === 'agent.name' && (alert.agent_name === filter.value || alert.agent?.name === filter.value)) match = true;
-            else if (filter.field === 'srcip' && (alert.srcIp === filter.value || alert.src_ip === filter.value)) match = true;
-            else if (filter.field === 'dstip' && (alert.dstIp === filter.value || alert.dst_ip === filter.value)) match = true;
-            else if (filter.field === 'mitre.id' && alert.mitreId === filter.value) match = true;
-            else if (alertVal === String(filter.value)) match = true;
-
-            if (!match) return false;
-        }
-
-        return true;
-    });
-
-    // Chart Data based on filtered view
-    const stats = { 'Critical': 0, 'Major': 0, 'Minor': 0 };
-    filteredAlerts.forEach(a => {
-        const sev = a.severity;
-        if (sev === 'Critical') stats['Critical']++;
-        else if (sev === 'High' || sev === 'Major') stats['Major']++;
-        else stats['Minor']++;
-    });
-
-    const chartData = [
-        { name: 'Critical', count: stats['Critical'], fill: '#ef4444' },
-        { name: 'Major', count: stats['Major'], fill: '#f97316' },
-        { name: 'Minor', count: stats['Minor'], fill: '#eab308' },
-    ];
-
-    const [expandedRows, setExpandedRows] = useState({});
-
-    const toggleRow = (id) => {
-        setExpandedRows(prev => ({ ...prev, [id]: !prev[id] }));
-    };
-
-    const getBadgeColor = (field, value, severity) => {
-        if (field === 'rule.level') {
-            switch (severity?.toLowerCase()) {
-                case 'critical': return 'bg-red-500/20 text-red-400 border-red-500/30';
-                case 'high': case 'major': return 'bg-orange-500/20 text-orange-400 border-orange-500/30';
-                default: return 'bg-blue-500/20 text-blue-400 border-blue-500/30';
-            }
-        }
-        if (field === 'srcip' || field === 'dstip') return 'bg-purple-900/40 text-purple-300 border-purple-700/50';
-        if (field === 'mitre.id') return 'bg-orange-900/40 text-orange-300 border-orange-700/50';
-        if (field === 'agent.name') return 'bg-gray-800 text-gray-300 border-gray-600';
-        return 'bg-blue-900/40 text-blue-300 border-blue-700/50';
+    const toggleField = (f) => {
+        setSelectedFields(prev =>
+            prev.includes(f) ? prev.filter(x => x !== f) : [...prev, f]
+        );
     };
 
     const renderBadges = (alert) => {
         const badges = [
-            { field: 'rule.level', label: 'Level', value: alert.rule_level, sev: alert.severity },
-            { field: 'agent.name', label: 'Agent', value: alert.agent_name || alert.agent?.name },
-            { field: 'rule.description', label: 'Rule', value: alert.rule_description },
-            { field: 'srcip', label: 'Src', value: alert.srcIp || alert.src_ip },
-            { field: 'dstip', label: 'Dst', value: alert.dstIp || alert.dst_ip },
-            { field: 'mitre.id', label: 'Mitre', value: alert.mitreId },
+            { field: 'rule.level', label: 'LEVEL', value: alert.rule_level, cls: LEVEL_COLOR(alert.rule_level) },
+            { field: 'agent.name', label: 'AGENT', value: alert.agent_name, cls: 'bg-gray-800 text-gray-300 border-gray-600' },
+            { field: 'rule.description', label: 'RULE', value: alert.rule_description, cls: 'bg-[#1a1f3a] text-gray-300 border-[#2d3748]' },
+            { field: 'srcip', label: 'SRC IP', value: alert.srcip || alert.src_ip, cls: 'bg-purple-900/40 text-purple-300 border-purple-700/50' },
+            { field: 'dstip', label: 'DST IP', value: alert.dstip || alert.dst_ip, cls: 'bg-indigo-900/40 text-indigo-300 border-indigo-700/50' },
+            { field: 'severity', label: 'SEV', value: alert.severity, cls: SEV_COLOR(alert.severity) },
         ];
-
         return badges.filter(b => b.value).map((b, i) => (
             <button
                 key={i}
-                onClick={(e) => { e.stopPropagation(); addFilter(b.field, b.value); }}
-                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono border transition-all hover:brightness-110 active:scale-95 ${getBadgeColor(b.field, b.value, b.sev)}`}
-                title={`Filter by ${b.label}: ${b.value}`}
+                onClick={e => { e.stopPropagation(); addFilter(b.field, b.value); }}
+                className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono border transition-all hover:brightness-125 active:scale-95 ${b.cls}`}
+                title={`Filter: ${b.field} = ${b.value}`}
             >
-                <span className="font-bold opacity-60 uppercase">{b.label}</span>
-                <span className="font-semibold truncate max-w-[150px]">{b.value}</span>
+                <span className="opacity-60 uppercase font-bold">{b.label}</span>
+                <span className="font-semibold truncate max-w-[180px]">{String(b.value)}</span>
             </button>
         ));
     };
 
+    const visibleFields = allFields.filter(f =>
+        !fieldSearch || f.toLowerCase().includes(fieldSearch.toLowerCase())
+    );
+
     return (
-        <div className="space-y-4 animate-in fade-in duration-500 font-sans">
-            {/* Histogram */}
-            <div className="bg-[#0a0e27] p-4 rounded-xl border border-[#1a1f3a] shadow-lg relative overflow-hidden h-36">
-                <div className="absolute top-3 left-4 flex flex-col z-10">
-                    <span className="text-2xl font-bold text-white tracking-widest leading-none">{filteredAlerts.length.toLocaleString()}</span>
-                    <span className="text-[10px] font-bold text-gray-500 uppercase tracking-widest">Hits
-                        <span className="ml-2 text-[9px] text-gray-600 normal-case bg-black/50 px-1 rounded">
-                            (Debug: Total {alerts?.length}, Filtered: {filteredAlerts.length}, Search: '{searchTerm}')
-                        </span>
-                    </span>
+        <div className="flex gap-0 h-full min-h-screen bg-[#060914] font-mono">
+
+            {/* ── LEFT: Field List (Wazuh sidebar) ── */}
+            <div className="w-52 flex-shrink-0 border-r border-[#1a1f3a] bg-[#060914] flex flex-col">
+                <div className="p-3 border-b border-[#1a1f3a]">
+                    <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-2">Selected Fields</div>
+                    <div className="space-y-0.5">
+                        {selectedFields.map(f => (
+                            <div key={f} className="flex items-center gap-1.5 group cursor-pointer hover:bg-[#1a1f3a] px-1 py-0.5 rounded"
+                                onClick={() => toggleField(f)}>
+                                <span className="w-2 h-2 rounded-full bg-[#00d4ff] flex-shrink-0" />
+                                <span className="text-[10px] text-[#00d4ff] truncate flex-1">{f}</span>
+                                <X className="w-2.5 h-2.5 text-gray-600 group-hover:text-red-400 opacity-0 group-hover:opacity-100 transition-all" />
+                            </div>
+                        ))}
+                    </div>
                 </div>
-                <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={chartData}>
-                        <RechartsTooltip
-                            contentStyle={{ backgroundColor: '#0a0e27', border: '1px solid #1a1f3a', borderRadius: '8px', fontSize: '11px' }}
-                            itemStyle={{ color: '#fff' }}
-                            cursor={{ fill: 'rgba(255,255,255,0.03)' }}
+                <div className="p-3 flex-1 overflow-hidden flex flex-col">
+                    <div className="text-[9px] font-bold text-gray-500 uppercase tracking-widest mb-2">Available Fields</div>
+                    <div className="relative mb-2">
+                        <Search className="w-2.5 h-2.5 text-gray-600 absolute left-2 top-1/2 -translate-y-1/2" />
+                        <input
+                            type="text"
+                            placeholder="Filter by type"
+                            value={fieldSearch}
+                            onChange={e => setFieldSearch(e.target.value)}
+                            className="w-full bg-[#1a1f3a] border border-[#2d3748] rounded pl-6 pr-2 py-1 text-[9px] text-gray-300 focus:outline-none focus:border-[#00d4ff]/50"
                         />
-                        <Bar dataKey="count" radius={[3, 3, 0, 0]} barSize={50}>
-                            {chartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.fill} />
-                            ))}
-                        </Bar>
-                    </BarChart>
-                </ResponsiveContainer>
+                    </div>
+                    <div className="overflow-y-auto flex-1 space-y-0.5">
+                        {visibleFields.filter(f => !selectedFields.includes(f)).map(f => (
+                            <div key={f}
+                                className="flex items-center gap-1.5 group cursor-pointer hover:bg-[#1a1f3a] px-1 py-0.5 rounded"
+                                onClick={() => toggleField(f)}
+                            >
+                                <span className="text-[9px] text-gray-400 font-bold w-3 flex-shrink-0">t</span>
+                                <span className="text-[10px] text-gray-400 truncate flex-1 group-hover:text-white transition-colors">{f}</span>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
 
-            {/* Filter Bar */}
-            <div className="bg-[#0a0e27]/80 backdrop-blur-sm p-3 rounded-xl border border-[#1a1f3a] flex flex-wrap gap-3 items-center shadow-lg sticky top-0 z-20">
-                {/* Search */}
-                <div className="relative flex-1 min-w-[200px]">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Search (e.g. 'Integrity', '192.168.1.5', 'ubuntu')..."
-                        value={searchTerm}
-                        onChange={handleSearchChange}
-                        className="w-full bg-[#1a1f3a] border border-[#2d3748] rounded-lg pl-9 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#00d4ff] transition-all"
-                    />
+            {/* ── RIGHT: Main content ── */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+
+                {/* Hits count + histogram */}
+                <div className="bg-[#060914] border-b border-[#1a1f3a] p-4">
+                    <div className="flex items-baseline gap-3 mb-1">
+                        <span className="text-3xl font-bold text-white">{filteredAlerts.length.toLocaleString()}</span>
+                        <span className="text-[10px] text-gray-500 uppercase tracking-widest">hits</span>
+                        {alerts.length !== filteredAlerts.length && (
+                            <span className="text-[10px] text-gray-600">
+                                (filtered from {alerts.length.toLocaleString()} total)
+                            </span>
+                        )}
+                    </div>
+                    <div className="h-28">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={histogramData} margin={{ top: 4, right: 8, left: -30, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#1a1f3a" vertical={false} />
+                                <XAxis dataKey="time" stroke="#374151" tick={{ fontSize: 8 }} interval="preserveStartEnd" />
+                                <YAxis stroke="#374151" tick={{ fontSize: 8 }} />
+                                <RechartsTooltip
+                                    contentStyle={{ backgroundColor: '#0a0e27', border: '1px solid #1a1f3a', borderRadius: '6px', fontSize: '11px' }}
+                                    itemStyle={{ color: '#fff' }}
+                                    cursor={{ fill: 'rgba(0,212,255,0.05)' }}
+                                />
+                                <Bar dataKey="count" fill="#1d4ed8" radius={[2, 2, 0, 0]} barSize={12} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
                 </div>
 
-                {/* Dropdowns */}
-                <div className="flex gap-2">
-                    <select
-                        value={timeFilter}
-                        onChange={(e) => setTimeFilter(e.target.value)}
-                        className="bg-[#1a1f3a] border border-[#2d3748] text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer hover:border-[#00d4ff]/50"
-                    >
-                        <option value="15m">Last 15 Minutes</option>
-                        <option value="1h">Last 1 Hour</option>
-                        <option value="24h">Last 24 Hours</option>
-                        <option value="7d">Last 7 Days</option>
+                {/* Search + Filters */}
+                <div className="bg-[#060914] border-b border-[#1a1f3a] px-4 py-2 flex flex-wrap gap-2 items-center sticky top-0 z-20">
+                    <div className="relative flex-1 min-w-[240px]">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-500" />
+                        <input
+                            type="text"
+                            placeholder="Search (e.g. 'Integrity', '192.168.1.5', 'ubuntu')..."
+                            value={searchTerm}
+                            onChange={e => { setSearchTerm(e.target.value); onSearchChange?.(e.target.value); }}
+                            className="w-full bg-[#0a0e27] border border-[#2d3748] rounded-lg pl-9 pr-3 py-1.5 text-xs text-white focus:outline-none focus:border-[#00d4ff] transition-all"
+                        />
+                    </div>
+                    <select value={timeFilter} onChange={e => setTimeFilter(e.target.value)}
+                        className="bg-[#0a0e27] border border-[#2d3748] text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer hover:border-[#00d4ff]/50">
                         <option value="All">All Time</option>
+                        <option value="15m">Last 15 min</option>
+                        <option value="1h">Last 1 hour</option>
+                        <option value="24h">Last 24 hours</option>
+                        <option value="7d">Last 7 days</option>
                     </select>
-
-                    <select
-                        value={severityFilter}
-                        onChange={(e) => setSeverityFilter(e.target.value)}
-                        className="bg-[#1a1f3a] border border-[#2d3748] text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer hover:border-[#00d4ff]/50"
-                    >
+                    <select value={severityFilter} onChange={e => setSeverityFilter(e.target.value)}
+                        className="bg-[#0a0e27] border border-[#2d3748] text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer hover:border-[#00d4ff]/50">
                         <option value="All">Severity: All</option>
-                        <option value="Critical">Critical Only</option>
-                        <option value="Major">Major/High</option>
-                        <option value="Minor">Minor/Low</option>
+                        <option value="Critical">Critical</option>
+                        <option value="Major">Major / High</option>
+                        <option value="Minor">Minor / Low</option>
                     </select>
-
-                    <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="bg-[#1a1f3a] border border-[#2d3748] text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer hover:border-[#00d4ff]/50"
-                    >
+                    <select value={statusFilter} onChange={e => setStatusFilter(e.target.value)}
+                        className="bg-[#0a0e27] border border-[#2d3748] text-white text-xs rounded-lg px-3 py-1.5 focus:outline-none cursor-pointer hover:border-[#00d4ff]/50">
                         <option value="All">Status: All</option>
                         <option value="Open">Open</option>
                         <option value="Investigating">Investigating</option>
                         <option value="Closed">Closed</option>
                     </select>
-
                     <button
                         onClick={() => { setSearchTerm(''); setSeverityFilter('All'); setTimeFilter('All'); setActiveFilters([]); }}
-                        className="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold uppercase hover:bg-red-500/20 border border-transparent hover:border-red-500/30 transition-all flex items-center gap-2"
-                        title="Reset all filters"
+                        className="px-3 py-1.5 bg-red-500/10 text-red-400 rounded-lg text-xs font-bold uppercase hover:bg-red-500/20 border border-transparent hover:border-red-500/30 transition-all flex items-center gap-1.5"
                     >
                         <Filter className="w-3 h-3" /> Reset
                     </button>
                 </div>
-            </div>
 
-            {/* Active Filters Chips */}
-            {activeFilters.length > 0 && (
-                <div className="flex flex-wrap gap-2 px-1">
-                    {activeFilters.map((f, i) => (
-                        <div key={i} className="flex items-center gap-1 bg-[#00d4ff]/10 border border-[#00d4ff]/30 text-[#00d4ff] px-2 py-0.5 rounded text-[10px] font-bold uppercase animate-in zoom-in-50 duration-200">
-                            <span className="opacity-70">{f.field}:</span>
-                            <span>{f.value}</span>
-                            <button
-                                onClick={() => removeFilter(f.field, f.value)}
-                                className="ml-1 hover:text-white transition-colors"
-                            >
-                                ×
-                            </button>
-                        </div>
-                    ))}
-                </div>
-            )}
+                {/* Active filter chips */}
+                {activeFilters.length > 0 && (
+                    <div className="px-4 py-2 flex flex-wrap gap-2 border-b border-[#1a1f3a] bg-[#060914]">
+                        {activeFilters.map((f, i) => (
+                            <div key={i} className="flex items-center gap-1 bg-[#00d4ff]/10 border border-[#00d4ff]/30 text-[#00d4ff] px-2 py-0.5 rounded text-[10px] font-bold">
+                                <span className="opacity-60">{f.field}:</span>
+                                <span>{f.value}</span>
+                                <button onClick={() => removeFilter(f.field, f.value)} className="ml-1 hover:text-white">×</button>
+                            </div>
+                        ))}
+                    </div>
+                )}
 
-            {/* Discovery Table */}
-            <div className="bg-[#0a0e27] rounded-xl border border-[#1a1f3a] shadow-2xl overflow-hidden min-h-[400px]">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-[11px] border-collapse font-mono">
-                        <thead>
-                            <tr className="bg-[#1a1f3a] text-gray-500 font-bold uppercase tracking-widest border-b border-[#2d3748]">
-                                <th className="w-10 py-3 px-2 text-center"></th>
-                                <th className="py-3 px-4 w-48 whitespace-nowrap">Time</th>
-                                <th className="py-3 px-4">Source Data (Click to Filter)</th>
+                {/* Discovery Table */}
+                <div className="flex-1 overflow-auto">
+                    <table className="w-full text-left text-[11px] border-collapse">
+                        <thead className="sticky top-0 z-10">
+                            <tr className="bg-[#0a0e27] text-gray-500 font-bold uppercase tracking-widest border-b border-[#1a1f3a] text-[9px]">
+                                <th className="w-8 py-2 px-2" />
+                                <th className="py-2 px-3 w-44 whitespace-nowrap">Time</th>
+                                <th className="py-2 px-3">Source Data (Click to Filter)</th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#1a1f3a]">
+                        <tbody>
                             {filteredAlerts.length > 0 ? (
                                 filteredAlerts.map((alert, i) => (
                                     <React.Fragment key={i}>
                                         <tr
-                                            className={`hover:bg-[#1a1f3a] transition-colors cursor-pointer group ${expandedRows[i] ? 'bg-[#1a1f3a]/50' : ''}`}
-                                            onClick={() => toggleRow(i)}
+                                            className={`hover:bg-[#0a0e27] transition-colors cursor-pointer group border-b border-[#1a1f3a]/50 ${expandedRows[i] ? 'bg-[#0a0e27]' : ''}`}
+                                            onClick={() => setExpandedRows(prev => ({ ...prev, [i]: !prev[i] }))}
                                         >
-                                            <td className="py-3 px-2 text-center text-gray-600 group-hover:text-[#00d4ff] transition-colors">
-                                                <ChevronRight className={`w-4 h-4 mx-auto transition-transform duration-200 ${expandedRows[i] ? 'rotate-90' : ''}`} />
+                                            <td className="py-2 px-2 text-center text-gray-600 group-hover:text-[#00d4ff] transition-colors">
+                                                <ChevronRight className={`w-3.5 h-3.5 mx-auto transition-transform duration-150 ${expandedRows[i] ? 'rotate-90 text-[#00d4ff]' : ''}`} />
                                             </td>
-                                            <td className="py-3 px-4 whitespace-nowrap text-blue-400 font-medium group-hover:text-blue-300">
-                                                {alert.time}
+                                            <td className="py-2 px-3 whitespace-nowrap text-blue-400 text-[10px] group-hover:text-blue-300">
+                                                {alert.time || new Date(alert.timestamp).toLocaleString()}
                                             </td>
-                                            <td className="py-3 px-4">
-                                                <div className="flex flex-wrap gap-2 items-center">
+                                            <td className="py-2 px-3">
+                                                <div className="flex flex-wrap gap-1.5 items-center">
                                                     {renderBadges(alert)}
                                                 </div>
                                             </td>
                                         </tr>
-                                        {expandedRows[i] && (
-                                            <tr className="bg-[#060914] border-b border-[#1a1f3a] shadow-inner">
-                                                <td colSpan="3" className="p-0">
-                                                    <motion.div
-                                                        initial={{ opacity: 0, height: 0 }}
-                                                        animate={{ opacity: 1, height: 'auto' }}
-                                                        className="p-6 border-l-4 border-[#00d4ff] ml-10 my-2"
-                                                    >
-                                                        {/* Actions */}
-                                                        <div className="flex gap-3 mb-6">
-                                                            <button
-                                                                onClick={(e) => { e.stopPropagation(); onAnalyze(alert.entity); }}
-                                                                className="flex items-center gap-2 px-4 py-1.5 bg-[#00d4ff] text-black rounded text-[10px] font-bold uppercase hover:bg-[#33ddff] hover:scale-105 transition-all shadow-lg shadow-blue-500/20"
-                                                            >
-                                                                <Activity className="w-3.5 h-3.5" /> Analyze {alert.entity}
-                                                            </button>
-                                                            {alert.is_simulated && (
-                                                                <span className="flex items-center gap-2 px-3 py-1.5 bg-[#f97316]/10 text-[#f97316] border border-[#f97316]/30 rounded text-[10px] font-bold uppercase">
-                                                                    <Zap className="w-3.5 h-3.5" /> AI Simulation
-                                                                </span>
-                                                            )}
-                                                        </div>
-
-                                                        {/* JSON Table */}
-                                                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                                            <div className="space-y-1">
-                                                                <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 border-b border-gray-800 pb-1">Primary Fields</h4>
-                                                                {Object.entries(alert).slice(0, 10).map(([key, value]) => {
-                                                                    if (typeof value === 'object') return null;
-                                                                    return (
-                                                                        <div key={key} className="grid grid-cols-3 gap-4 hover:bg-white/5 p-1 rounded transition-colors group/row">
-                                                                            <span className="text-gray-500 text-[10px] font-bold uppercase truncate">{key}</span>
-                                                                            <span className="col-span-2 text-gray-300 text-[11px] font-mono break-all group-hover/row:text-white transition-colors">{String(value)}</span>
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                            </div>
-                                                            <div className="space-y-2">
-                                                                <h4 className="text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 border-b border-gray-800 pb-1">Raw Data</h4>
-                                                                <div className="bg-black/40 rounded p-4 border border-gray-800 h-full max-h-[300px] overflow-auto custom-scrollbar">
-                                                                    <pre className="text-[10px] text-gray-400 font-mono leading-relaxed">
-                                                                        {JSON.stringify(alert, null, 2)}
-                                                                    </pre>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    </motion.div>
-                                                </td>
-                                            </tr>
-                                        )}
+                                        <AnimatePresence>
+                                            {expandedRows[i] && (
+                                                <tr key={`exp-${i}`} className="border-b border-[#1a1f3a]">
+                                                    <td colSpan="3" className="p-0">
+                                                        <ExpandedRow
+                                                            alert={alert}
+                                                            onAnalyze={onAnalyze}
+                                                            selectedFields={selectedFields}
+                                                        />
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </AnimatePresence>
                                     </React.Fragment>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan="3" className="py-20 text-center">
-                                        <div className="flex flex-col items-center justify-center py-12 text-gray-500 animate-in fade-in duration-500">
-                                            <ShieldAlert className="w-12 h-12 mb-4 opacity-30 text-[#00d4ff]" />
+                                    <td colSpan="3" className="py-24 text-center">
+                                        <div className="flex flex-col items-center text-gray-600">
+                                            <ShieldAlert className="w-10 h-10 mb-3 opacity-30 text-[#00d4ff]" />
                                             <p className="text-xs uppercase tracking-widest font-bold mb-2">No events match current filters</p>
-                                            <div className="text-[10px] bg-black/40 p-3 rounded mb-4 font-mono text-gray-400 border border-white/5">
-                                                <div className="mb-1">Active Search: <span className="text-white">"{searchTerm}"</span></div>
-                                                <div className="mb-1">Severity: <span className="text-white">{severityFilter}</span></div>
-                                                <div className="mb-1">Time: <span className="text-white">{timeFilter}</span></div>
-                                                <div>Payload Size: <span className="text-[#00d4ff] font-bold">{alerts?.length || 0}</span> items</div>
-                                            </div>
+                                            <p className="text-[10px] text-gray-700 mb-4">
+                                                {alerts.length === 0
+                                                    ? 'No alerts in database yet — run the pre-processor to populate'
+                                                    : `${alerts.length} total alerts, none match current filters`}
+                                            </p>
                                             <button
                                                 onClick={() => { setSearchTerm(''); setSeverityFilter('All'); setTimeFilter('All'); setActiveFilters([]); }}
-                                                className="px-6 py-2 bg-[#00d4ff]/10 text-[#00d4ff] border border-[#00d4ff]/30 rounded hover:bg-[#00d4ff]/20 transition-all text-xs font-bold uppercase tracking-wider shadow-[0_0_15px_rgba(0,212,255,0.1)] hover:shadow-[0_0_25px_rgba(0,212,255,0.2)]"
+                                                className="px-5 py-2 bg-[#00d4ff]/10 text-[#00d4ff] border border-[#00d4ff]/30 rounded hover:bg-[#00d4ff]/20 transition-all text-xs font-bold uppercase"
                                             >
-                                                Clear All Filters & Reset
+                                                Clear All Filters
                                             </button>
                                         </div>
                                     </td>

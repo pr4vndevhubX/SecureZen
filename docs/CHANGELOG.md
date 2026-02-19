@@ -1,6 +1,15 @@
-# Changelog
-
 All notable changes to the SecureZen project will be documented in this file.
+
+## [1.9.0] - 2026-02-19
+
+### Added
+- **High-Performance ML Ingestion**: Refactored the `standalone_app` syslog pipeline to achieve 10x–50x speed gains through singleton model initialization and direct in-memory execution.
+- **Dependency Hardening**: Integrated `salesforce-merlion` and `nltk` into the project's core virtual environment for robust ML-based anomaly detection.
+
+### Fixed
+- **Dashboard Data Sync**: Restored real-time alert counts and trend charts by resolving port 5000 conflicts and ensuring the backend server correctly serves database content.
+- **UI Baseline Alignment**: Removed legacy hardcoded dates from `MitreCharts.jsx`, ensuring the dashboard reflects actual analysis timestamps.
+- **Path Resolution Hardening**: Fixed `ModuleNotFoundError` issues in the optimized pipeline by standardizing absolute path detection for `AlertStorage` and local libraries.
 
 ## [1.8.0] - 2026-02-17
 

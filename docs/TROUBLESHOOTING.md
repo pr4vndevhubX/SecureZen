@@ -8,9 +8,9 @@ Common issues and remediation steps for the SecureZen platform.
 ## Connection Issues
 
 ### Backend unreachable (Connection Refused)
-- **Check Ports**: Ensure `app.py` is running on port 5000.
-- **Firewall**: Ensure the port is open if accessing from a different machine.
-- **PID Check**: `lsof -i :5000` to see if another process is holding the port.
+- **Check Ports**: Ensure the backend is running on port 5000.
+- **Port 5000 Conflict**: Often caused by `msedge.exe`. Run `netstat -ano | findstr :5000` to identify and kill the process.
+- **Firewall**: Ensure the port is open if accessing remotely.
 
 ### RAG Service unreachable
 - Ensure the RAG service is running in `services/rag-service/` on port 8001.
