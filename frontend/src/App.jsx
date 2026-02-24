@@ -361,7 +361,7 @@ const AISOCDashboard = () => {
 
     const navItems = {
         analytics: [
-            { id: 'securezen_analysis', label: 'Main Dashboard', icon: Cpu },
+            { id: 'securezen_analysis', label: 'Log Analysis', icon: BarChart2 },
             { id: 'events', label: 'Alert Dashboard', icon: Shield },
         ],
         insights: [
@@ -372,6 +372,7 @@ const AISOCDashboard = () => {
             { id: 'standalone_intel', label: 'Syslog Intelligence', icon: Search },
         ]
     };
+
 
     const handleNavClick = (tabId) => {
         if (tabId === 'events') {

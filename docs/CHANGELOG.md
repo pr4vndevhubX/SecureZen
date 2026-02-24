@@ -1,5 +1,17 @@
 All notable changes to the SecureZen project will be documented in this file.
 
+## [2.0.0] - 2026-02-24
+
+### Added
+- **Interactive LogAI Control Panel**: Implemented a comprehensive dataset management UI in the `standalone_app` dashboard, allowing users to select datasets, trigger analysis, and track progress in real-time.
+- **On-Demand Analysis API**: Developed new backend endpoints (`/api/logai/datasets`, `/api/logai/run-analysis`, `/api/logai/analysis-status`) supporting background thread execution of the ML pipeline.
+- **Enhanced Sidebar Navigation**: Unified the LogAI features under a dedicated "Log Analysis" sidebar entry for improved discoverability.
+
+### Fixed
+- **Python 3.11 Engine Compatibility**: Resolved a critical "mutable default" error in the `logai` core library by patching `data_model.py` to use `default_factory` for pandas DataFrames.
+- **Dynamic Dataset Path Resolution**: Fixed hardcoded absolute paths in `ingest_datasets.py`, enabling reliable log scanning across different environments.
+- **LogAI Dashboard Connectivity**: Successfully wired the React frontend to live backend metrics, replacing placeholders with real pattern counts and anomaly timelines.
+
 ## [1.9.0] - 2026-02-19
 
 ### Added

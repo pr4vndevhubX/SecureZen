@@ -1,5 +1,5 @@
 # SecureZen AI-Powered Threat Intelligence System
-## Autonomous Security Operations Platform with Multi-Agent Intelligence (v1.9.0)
+## Autonomous Security Operations Platform with Multi-Agent Intelligence (v2.0.0)
 
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
@@ -182,6 +182,18 @@ Detailed documentation is available in the `docs/` directory:
 
 ---
 
+## 📅 Version 2.0.0 Update (Feb 24, 2026)
+
+### 📊 Full LogAI Dataset Integration
+SecureZen now provides a fully interactive experience for analyzing massive log datasets through the dashboard.
+
+- **On-Demand Analysis Panel**: Users can now select specific log files (BGL, HDFS, HealthApp) from the UI and trigger LogAI analysis in the background.
+- **Live Progress Tracking**: A real-time progress bar and status indicator have been integrated to monitor deep-learning analysis progress.
+- **Python 3.11 Engine Fix**: Patched the underlying LogAI engine to ensure stability on modern Python environments, resolving critical pydantic/dataclass errors.
+- **Unified Logic**: Sidebar navigation now features a dedicated "Log Analysis" center, centralizing pattern extraction and threat clustering results.
+
+---
+
 ## 📅 Version 1.9.0 Update (Feb 19, 2026)
 
 ### 🏎️ High-Speed ML Ingestion (10x–50x Boost)
@@ -266,5 +278,5 @@ Distributed under the MIT License. See `LICENSE` for more information.
 **Author**: PRAVEENKUMAR / KRYA SOLUTIONS PRIVATE LIMITED
 **Project**: [SecureZen GitHub](https://github.com/pr4vndevhubX/SecureZen)
 
-**Last Updated**: 2026-02-19
-**Version**: 1.9.0
+**Last Updated**: 2026-02-24
+**Version**: 2.0.0
